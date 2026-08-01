@@ -1,0 +1,6 @@
+{
+  "name": "AI 자소서 첨삭 컨설턴트",
+  "description": "희망 직무와 기업 맞춤형 AI 자소서 교정, 문장별 Before/After 비교, 강점/보완점 분석 및 가독성 개선 서비스",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
