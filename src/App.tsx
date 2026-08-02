@@ -7,8 +7,9 @@ import { HelpGuideModal } from './components/HelpGuideModal';
 import { AuthModal } from './components/AuthModal';
 import { PaymentModal } from './components/PaymentModal';
 import { AdminModal } from './components/AdminModal';
+import { TermsModal } from './components/TermsModal';
 import { CorrectionRequest, CorrectionResponse, HistoryItem } from './types';
-import { AlertCircle, ArrowUp } from 'lucide-react';
+import { AlertCircle, ArrowUp, Instagram, ShieldCheck } from 'lucide-react';
 import { supabase } from './lib/supabase';
 
 const checkIsAdminUser = (user: any) => {
@@ -41,6 +42,7 @@ export default function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
 
   // Auth state
   const [user, setUser] = useState<any | null>(null);
@@ -577,12 +579,35 @@ export default function App() {
       </button>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 bg-white py-6 text-center text-xs text-gray-500 mt-12">
-        <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div>Draft Ethan • AI Resume Studio Engine</div>
-          <div className="text-[11px] text-gray-400">
-            제출하신 자기소개서는 오직 첨삭 목적으로만 사용되며 서버에 별도로 저장되지 않습니다.
+      <footer className="border-t border-gray-100 bg-white py-8 text-center text-xs text-gray-500 mt-12">
+        <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-3 text-left">
+            <span className="font-semibold text-gray-800">Draft Ethan</span>
+            <span className="text-gray-300">•</span>
+            <button
+              onClick={() => setIsTermsOpen(true)}
+              className="text-gray-500 hover:text-indigo-600 font-medium underline cursor-pointer flex items-center gap-1"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              이용약관 및 개인정보 처리방침
+            </button>
           </div>
+
+          <div className="flex items-center space-x-3">
+            <a
+              href="https://www.instagram.com/draft_ethan?igsh=MXJubXc5cjJ5ZTA1Zw=="
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 text-white font-semibold text-xs shadow-sm hover:opacity-90 transition cursor-pointer"
+            >
+              <Instagram className="w-3.5 h-3.5" />
+              <span>인스타그램 CS / 입금 문의</span>
+            </a>
+          </div>
+        </div>
+
+        <div className="max-w-5xl mx-auto px-6 mt-4 text-[11px] text-gray-400 text-center sm:text-left leading-relaxed">
+          제출하신 자기소개서는 오직 AI 분석 및 첨삭 목적으로만 일시 처리되며 서버에 별도로 저장되지 않습니다. | AI 결과물은 서류 작성 참고용이며 채용 결과를 보장하지 않습니다.
         </div>
       </footer>
 
@@ -616,6 +641,12 @@ export default function App() {
           user={user}
         />
       )}
+
+      {/* Terms Modal */}
+      <TermsModal
+        isOpen={isTermsOpen}
+        onClose={() => setIsTermsOpen(false)}
+      />
 
       {/* Admin Panel Modal */}
       {isAdmin && (
