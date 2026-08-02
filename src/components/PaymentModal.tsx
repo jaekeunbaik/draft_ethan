@@ -121,6 +121,38 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
         if (error) throw error;
       }
 
+      // 3. Send real-time notification to Discord Webhook directly
+      try {
+        const webhookUrl =
+          import.meta.env.VITE_DISCORD_WEBHOOK_URL ||
+          'https://discord.com/api/webhooks/1533471768809836638/Xs8S5bFfdT_8dVwguB8qSmyjaehnQ81wXuaKvUum_K4mUo3CcF_5NRMdPTXBfBFBZRgx';
+
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            embeds: [
+              {
+                title: '🔔 새로운 무통장 입금 확인 요청!',
+                color: 0x5865f2,
+                fields: [
+                  { name: '👤 입금자 성함', value: depositorName.trim() || '미입력', inline: true },
+                  { name: '💰 입금 금액', value: `${getAmount(selectedProduct).toLocaleString()}원`, inline: true },
+                  { name: '📦 신청 상품', value: getProductName(selectedProduct), inline: false },
+                  { name: '📧 신청자 이메일/ID', value: user?.email || `${user?.id || 'unknown'}@kakao.user`, inline: false },
+                ],
+                timestamp: new Date().toISOString(),
+                footer: {
+                  text: 'Draft Ethan Pro 입금 알림',
+                },
+              },
+            ],
+          }),
+        });
+      } catch (notifyErr) {
+        console.warn('Failed to send Discord notification:', notifyErr);
+      }
+
       alert('👍 입금 확인 요청이 접수되었습니다!\n백재근 대표님이 입금 확인 즉시 등급을 활성화해 드립니다.');
       onClose();
     } catch (err: any) {

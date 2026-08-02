@@ -229,6 +229,50 @@ ${content}
     }
   });
 
+  // API Endpoint for Discord Deposit Request Notification
+  app.post('/api/notify-deposit', async (req, res) => {
+    try {
+      const { depositorName, amount, product, email } = req.body;
+      const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+
+      if (!discordWebhookUrl) {
+        console.warn('DISCORD_WEBHOOK_URL is not set in .env');
+        return res.json({ success: true, message: 'Webhook URL not configured' });
+      }
+
+      const payload = {
+        embeds: [
+          {
+            title: '🔔 새로운 무통장 입금 확인 요청!',
+            color: 0x5865f2,
+            fields: [
+              { name: '👤 입금자 성함', value: depositorName || '미입력', inline: true },
+              { name: '💰 입금 금액', value: `${Number(amount).toLocaleString()}원`, inline: true },
+              { name: '📦 신청 상품', value: product || '무제한 이용권', inline: false },
+              { name: '📧 신청자 이메일/ID', value: email || '미입력', inline: false },
+            ],
+            timestamp: new Date().toISOString(),
+            footer: {
+              text: 'Draft Ethan Pro 입금 알림',
+            },
+          },
+        ],
+      };
+
+      await fetch(discordWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      console.log(`[Discord Notify] Deposit request from ${depositorName} (${amount}원) sent!`);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('Discord notification failed:', error);
+      return res.status(500).json({ error: 'Failed to send Discord notification' });
+    }
+  });
+
   // API Endpoint for Toss Payments Success
   app.get('/api/payments/success', async (req, res) => {
     const { paymentKey, orderId, amount } = req.query;
