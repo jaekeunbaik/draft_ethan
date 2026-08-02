@@ -17,7 +17,9 @@ const getSupabaseClient = () => {
 const getAiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY 환경변수가 설정되지 않았습니다. Vercel Project Settings -> Environment Variables 메뉴에서 GEMINI_API_KEY를 추가해 주세요.');
+    const envKeys = Object.keys(process.env).filter(k => k.toUpperCase().includes('GEMINI') || k.toUpperCase().includes('KEY') || k.startsWith('VITE_'));
+    console.error('Available ENV keys:', envKeys);
+    throw new Error(`GEMINI_API_KEY 환경변수가 설정되지 않았습니다. (감지된 관련 변수: ${envKeys.join(', ') || '없음'}). Vercel 대시보드에서 Redeploy(재배포)를 진행해 주세요.`);
   }
   return new GoogleGenAI({
     apiKey,
