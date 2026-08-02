@@ -23,8 +23,8 @@ const checkIsAdminUser = (user: any) => {
     cleanEmail.startsWith('axsza') ||
     cleanMetaEmail.startsWith('axsza') ||
     rawId === 'd54f0cc2-a6b5-471e-9e8f-3410a8f611fc' || // 대표님의 Kakao ID 강제 허용
-    (import.meta.env.VITE_ADMIN_EMAILS && 
-      import.meta.env.VITE_ADMIN_EMAILS.toLowerCase().split(',').some((e: string) => 
+    (import.meta.env.VITE_ADMIN_EMAILS &&
+      import.meta.env.VITE_ADMIN_EMAILS.toLowerCase().split(',').some((e: string) =>
         cleanEmail === e || cleanMetaEmail === e
       )
     )
@@ -67,14 +67,15 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch or self-initialize user profile row
+  // Fetch or self-initialize user profile row & listen for Realtime updates
   useEffect(() => {
+    if (!user) {
+      setIsPro(false);
+      setIsAdmin(false);
+      return;
+    }
+
     const fetchProfile = async () => {
-      if (!user) {
-        setIsPro(false);
-        setIsAdmin(false);
-        return;
-      }
       try {
         const { data, error } = await supabase
           .from('profiles')
@@ -91,7 +92,7 @@ export default function App() {
               .insert([{ id: user.id, email: user.email || `${user.id}@kakao.user`, is_pro: false }])
               .select('*')
               .single();
-            
+
             if (!insertError && newProfile) {
               setIsPro(newProfile.is_pro);
               setIsAdmin((newProfile as any).is_admin === true || checkIsAdminUser(user));
@@ -111,6 +112,38 @@ export default function App() {
     };
 
     fetchProfile();
+
+    // 🚀 Supabase Realtime Listener for instant PRO upgrade without refresh
+    const channel = supabase
+      .channel(`profile-realtime-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload: any) => {
+          if (payload.new) {
+            const nextPro = payload.new.is_pro;
+            setIsPro((prevPro) => {
+              if (!prevPro && nextPro) {
+                alert('🎉 축하합니다! 관리자 입금 확인이 완료되어 PRO 무제한 첨삭 기능이 즉시 활성화되었습니다!');
+              }
+              return nextPro;
+            });
+            if (payload.new.is_admin !== undefined) {
+              setIsAdmin(payload.new.is_admin === true || checkIsAdminUser(user));
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   // Handle URL redirect query parameters for payment callbacks
@@ -119,7 +152,7 @@ export default function App() {
     if (params.get('payment_success') === 'true') {
       alert('🎉 Pro 멤버십 결제가 성공적으로 완료되었습니다! 평생 무제한 첨삭 기능이 활성화되었습니다.');
       window.history.replaceState({}, document.title, window.location.pathname);
-      
+
       // Instantly trigger re-checking profile to sync Badge
       if (user) {
         supabase
@@ -337,12 +370,12 @@ export default function App() {
         const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
         const kstCutoff = new Date(kstNow);
         kstCutoff.setUTCHours(6, 0, 0, 0); // Target 6:00 AM KST
-        
+
         // If current KST is before 6:00 AM KST, the reset happens at 6:00 AM KST of yesterday
         if (kstNow.getUTCHours() < 6) {
           kstCutoff.setUTCDate(kstCutoff.getUTCDate() - 1);
         }
-        
+
         // Convert back to UTC cutoff date
         const utcCutoffTime = new Date(kstCutoff.getTime() - (9 * 60 * 60 * 1000));
 
@@ -398,7 +431,7 @@ export default function App() {
         },
         body: JSON.stringify({
           ...req,
-          isPro, 
+          isPro,
           userId: user.id
         }),
       });
@@ -436,7 +469,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-gray-800 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       {/* Navigation Header */}
-       <Header
+      <Header
         onOpenHistory={() => setIsHistoryOpen(true)}
         onOpenHelp={() => setIsHelpOpen(true)}
         historyCount={history.length}
@@ -464,11 +497,11 @@ export default function App() {
             <span>✨</span>
             <span>Drafted by Ethan. Approved by Recruiters.</span>
           </div>
-          
+
           <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 tracking-tight">
             자소서 고민, <span className="text-indigo-600">Ethan</span>에게 맡기세요
           </h1>
-          
+
           <p className="text-gray-500 text-base max-w-md mx-auto leading-relaxed">
             어색한 문장은 다듬고, 지원 직무에 맞는 키워드만 정교하게 연결해 드립니다.
           </p>
