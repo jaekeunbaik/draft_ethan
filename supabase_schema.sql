@@ -1,5 +1,5 @@
 -- =============================================================================
--- Draft Ethan - Supabase Database Schema & RLS Setup (Idempotent / Repeatable)
+-- Draft Ethan - Supabase Database Schema & RLS Setup (Idempotent / No Recursion)
 -- =============================================================================
 -- Run this script in your Supabase SQL Editor (https://supabase.com/dashboard/project/_/sql)
 
@@ -21,6 +21,17 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS pro_expires_at TIMESTAMPTZ;
 -- Enable RLS for profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+-- Create Security Definer helper function to avoid RLS infinite recursion
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND is_admin = TRUE
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Drop existing policies if present to prevent 42710 duplicate policy errors
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
@@ -38,21 +49,11 @@ CREATE POLICY "Users can insert their own profile"
 
 CREATE POLICY "Admins can view all profiles"
     ON public.profiles FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE id = auth.uid() AND is_admin = TRUE
-        )
-    );
+    USING (public.is_admin());
 
 CREATE POLICY "Admins can update all profiles"
     ON public.profiles FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE id = auth.uid() AND is_admin = TRUE
-        )
-    );
+    USING (public.is_admin());
 
 
 -- 2. Create HISTORY_ITEMS table
@@ -110,12 +111,7 @@ CREATE POLICY "Users can view and insert their own payment requests"
 
 CREATE POLICY "Admins can manage all payment requests"
     ON public.payment_requests FOR ALL
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE id = auth.uid() AND is_admin = TRUE
-        )
-    );
+    USING (public.is_admin());
 
 
 -- 4. Create USAGE_LOGS table (Server side logging)
@@ -127,7 +123,6 @@ CREATE TABLE IF NOT EXISTS public.usage_logs (
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
--- Enable RLS for usage_logs
 ALTER TABLE public.usage_logs ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow log insert" ON public.usage_logs;
