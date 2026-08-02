@@ -1,9 +1,9 @@
 -- =============================================================================
--- Draft Ethan - Supabase Database Schema & RLS Setup
+-- Draft Ethan - Supabase Database Schema & RLS Setup (Idempotent / Repeatable)
 -- =============================================================================
 -- Run this script in your Supabase SQL Editor (https://supabase.com/dashboard/project/_/sql)
 
--- 1. Create PROFILES table
+-- 1. Create PROFILES table if not exists & ensure pro_expires_at column exists
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT,
@@ -14,8 +14,18 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
+-- Ensure columns exist if table was created previously
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS free_usage_reset_at TIMESTAMPTZ;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS pro_expires_at TIMESTAMPTZ;
+
 -- Enable RLS for profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if present to prevent 42710 duplicate policy errors
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can update all profiles" ON public.profiles;
 
 -- RLS Policies for profiles
 CREATE POLICY "Users can view their own profile"
@@ -63,7 +73,8 @@ CREATE INDEX IF NOT EXISTS idx_history_items_user_created
 -- Enable RLS for history_items
 ALTER TABLE public.history_items ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for history_items
+DROP POLICY IF EXISTS "Users can manage their own history items" ON public.history_items;
+
 CREATE POLICY "Users can manage their own history items"
     ON public.history_items FOR ALL
     USING (auth.uid() = user_id)
@@ -89,7 +100,9 @@ CREATE INDEX IF NOT EXISTS idx_payment_requests_status
 -- Enable RLS for payment_requests
 ALTER TABLE public.payment_requests ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for payment_requests
+DROP POLICY IF EXISTS "Users can view and insert their own payment requests" ON public.payment_requests;
+DROP POLICY IF EXISTS "Admins can manage all payment requests" ON public.payment_requests;
+
 CREATE POLICY "Users can view and insert their own payment requests"
     ON public.payment_requests FOR ALL
     USING (auth.uid() = user_id)
@@ -117,7 +130,8 @@ CREATE TABLE IF NOT EXISTS public.usage_logs (
 -- Enable RLS for usage_logs
 ALTER TABLE public.usage_logs ENABLE ROW LEVEL SECURITY;
 
--- Service role bypasses RLS automatically, allow insert for authenticated/anon
+DROP POLICY IF EXISTS "Allow log insert" ON public.usage_logs;
+
 CREATE POLICY "Allow log insert"
     ON public.usage_logs FOR INSERT
     WITH CHECK (true);
