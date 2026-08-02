@@ -376,8 +376,42 @@ export default function App() {
     setError(null);
     setRequest(req);
 
+    // 1-1. Real-time DB Re-verification: Check if PRO membership has expired during active session
+    let currentIsPro = isPro;
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('is_pro, pro_expires_at')
+        .eq('id', user.id)
+        .single();
+
+      if (profileData) {
+        if (profileData.is_pro && profileData.pro_expires_at) {
+          if (new Date(profileData.pro_expires_at) < new Date()) {
+            console.log('PRO membership expired during active session. Reverting to free tier.');
+            await supabase
+              .from('profiles')
+              .update({ is_pro: false, pro_expires_at: null })
+              .eq('id', user.id);
+            
+            setIsPro(false);
+            currentIsPro = false;
+            alert('⏰ PRO 이용권 기간이 만료되어 일반 회원(일 3회 제한)으로 변경되었습니다.');
+          } else {
+            setIsPro(true);
+            currentIsPro = true;
+          }
+        } else {
+          setIsPro(profileData.is_pro);
+          currentIsPro = profileData.is_pro;
+        }
+      }
+    } catch (e) {
+      console.warn('Realtime profile check warning:', e);
+    }
+
     // 2. Gating check: Block free users executing more than 3 requests daily (measured from KST 6:00 AM)
-    if (!isPro) {
+    if (!currentIsPro) {
       try {
         const now = new Date();
         // Convert to KST representational hours (UTC + 9)
