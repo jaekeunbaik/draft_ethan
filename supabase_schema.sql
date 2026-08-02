@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     is_pro BOOLEAN DEFAULT FALSE NOT NULL,
     is_admin BOOLEAN DEFAULT FALSE NOT NULL,
     free_usage_reset_at TIMESTAMPTZ,
+    pro_expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 

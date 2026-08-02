@@ -103,7 +103,19 @@ export default function App() {
             throw error;
           }
         } else if (data) {
-          setIsPro(data.is_pro);
+          let activePro = data.is_pro;
+          if (activePro && data.pro_expires_at) {
+            const expiresDate = new Date(data.pro_expires_at);
+            if (expiresDate < new Date()) {
+              console.log('PRO membership expired on', data.pro_expires_at, '- auto downgrading to free tier...');
+              activePro = false;
+              await supabase
+                .from('profiles')
+                .update({ is_pro: false, pro_expires_at: null })
+                .eq('id', user.id);
+            }
+          }
+          setIsPro(activePro);
           setIsAdmin((data as any).is_admin === true || checkIsAdminUser(user));
         }
       } catch (err) {

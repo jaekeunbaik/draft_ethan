@@ -11,6 +11,7 @@ interface UserProfile {
   id: string;
   email: string | null;
   is_pro: boolean;
+  pro_expires_at?: string | null;
   created_at?: string;
 }
 
@@ -94,16 +95,20 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     setActionLoadingId(userId);
     try {
       const nextStatus = !currentProStatus;
+      const expiresAt = nextStatus
+        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+
       const { error } = await supabase
         .from('profiles')
-        .update({ is_pro: nextStatus })
+        .update({ is_pro: nextStatus, pro_expires_at: expiresAt })
         .eq('id', userId);
 
       if (error) throw error;
 
       setProfiles((prev) =>
         prev.map((profile) =>
-          profile.id === userId ? { ...profile, is_pro: nextStatus } : profile
+          profile.id === userId ? { ...profile, is_pro: nextStatus, pro_expires_at: expiresAt } : profile
         ).sort((a: any, b: any) => {
           if (a.is_pro && !b.is_pro) return -1;
           if (!a.is_pro && b.is_pro) return 1;
@@ -140,10 +145,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const handleApprovePayment = async (req: PaymentRequest) => {
     setActionLoadingId(req.id);
     try {
-      // 1. Upgrade profile's is_pro status to true
+      let days = 30;
+      if (req.product.includes('7일')) {
+        days = 7;
+      } else if (req.product.includes('30일')) {
+        days = 30;
+      }
+      const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+      // 1. Upgrade profile's is_pro status to true with pro_expires_at timestamp
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ is_pro: true })
+        .update({ is_pro: true, pro_expires_at: expiresAt })
         .eq('id', req.user_id);
 
       if (profileError) throw profileError;
@@ -156,14 +169,20 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
 
       if (reqError) throw reqError;
 
-      alert(`👑 [${req.depositor_name || '무명'}] 회원님의 이체 정보가 승인되었습니다.\n해당 계정의 PRO 등급이 즉각 승격되었습니다!`);
+      const expiresDateStr = new Date(expiresAt).toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+
+      alert(`👑 [${req.depositor_name || '무명'}] 회원님의 이체 승인이 완료되었습니다.\nPRO 이용권(${days}일)이 활성화되었습니다!\n자동 만료 예정일: ${expiresDateStr}`);
       
       // Update state locally
       setPaymentRequests((prev) =>
         prev.map((r) => (r.id === req.id ? { ...r, status: 'approved' } : r))
       );
       setProfiles((prev) =>
-        prev.map((p) => (p.id === req.user_id ? { ...p, is_pro: true } : p))
+        prev.map((p) => (p.id === req.user_id ? { ...p, is_pro: true, pro_expires_at: expiresAt } : p))
       );
     } catch (err) {
       console.error('Approve failed:', err);
