@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Copy, CheckCircle2 } from 'lucide-react';
+import { X, Check, Copy, CheckCircle2, Instagram } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface PaymentModalProps {
@@ -67,7 +67,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
   const handleProductSelect = async (product: ProductType) => {
     setSelectedProduct(product);
     if (!currentRequestId) return;
-    
+
     try {
       await supabase
         .from('payment_requests')
@@ -193,11 +193,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
               {/* Option 1: 7-day Pass */}
               <div
                 onClick={() => handleProductSelect('7days')}
-                className={`border-2 rounded-xl p-3.5 cursor-pointer transition flex flex-col justify-between ${
-                  selectedProduct === '7days'
+                className={`border-2 rounded-xl p-3.5 cursor-pointer transition flex flex-col justify-between ${selectedProduct === '7days'
                     ? 'border-indigo-600 bg-indigo-50/20 shadow-sm'
                     : 'border-gray-100 bg-white hover:border-gray-200'
-                }`}
+                  }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
@@ -215,11 +214,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
               {/* Option 2: 30-day Pass */}
               <div
                 onClick={() => handleProductSelect('30days')}
-                className={`border-2 rounded-xl p-3.5 cursor-pointer transition flex flex-col justify-between ${
-                  selectedProduct === '30days'
+                className={`border-2 rounded-xl p-3.5 cursor-pointer transition flex flex-col justify-between ${selectedProduct === '30days'
                     ? 'border-indigo-600 bg-indigo-50/20 shadow-sm'
                     : 'border-gray-100 bg-white hover:border-gray-200'
-                }`}
+                  }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
@@ -248,14 +246,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
                   </div>
                   <p className="text-[11px] text-gray-500 mt-0.5">예금주: 백재근</p>
                 </div>
-                
+
                 <button
                   onClick={handleCopyAccount}
-                  className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold flex items-center gap-1 transition shrink-0 ${
-                    copied
+                  className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold flex items-center gap-1 transition shrink-0 ${copied
                       ? 'border-emerald-250 bg-emerald-50 text-emerald-600 font-bold'
                       : 'border-indigo-150 bg-white hover:bg-gray-50 text-indigo-700 hover:text-indigo-850'
-                  }`}
+                    }`}
                 >
                   {copied ? (
                     <>
@@ -300,7 +297,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
               </p>
               <p>1. 위 은행 계좌번호로 지정 금액 <span className="font-bold text-indigo-600">{getAmount(selectedProduct).toLocaleString()}원</span>을 이체해 주세요.</p>
               <p>2. 송금 후, 위 입력란에 실제 <strong className="text-gray-850">입금자 성함</strong>을 입력하고 아래 <strong className="text-indigo-700">입금 완료 버튼</strong>을 꼭 눌러주세요!</p>
-              <p>3. 버튼을 클릭하면 어드민 페이지에 자동으로 등록되며, 입금 확인 후 즉시 등급이 활성화됩니다.</p>
+              <p>3. 입금 문의나 궁금하신 점은 <a href="https://www.instagram.com/draft_ethan?igsh=MXJubXc5cjJ5ZTA1Zw==" target="_blank" rel="noreferrer" className="text-purple-600 font-bold underline inline-flex items-center gap-0.5"><Instagram className="w-3 h-3 inline" />인스타그램 DM (@draft_ethan)</a>으로 남겨주시면 빠르게 답변드립니다.</p>
             </div>
           </div>
         </div>
@@ -321,11 +318,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
           <div className="grid grid-cols-3 gap-2 mt-2">
             <button
               onClick={handleCopyAccount}
-              className={`col-span-1 py-3 rounded-xl border text-xs font-bold transition flex items-center justify-center cursor-pointer active:scale-98 ${
-                copied
+              className={`col-span-1 py-3 rounded-xl border text-xs font-bold transition flex items-center justify-center cursor-pointer active:scale-98 ${copied
                   ? 'border-emerald-200 bg-emerald-50 text-emerald-600 font-extrabold'
                   : 'border-indigo-200 bg-white hover:bg-gray-50 text-indigo-700'
-              }`}
+                }`}
             >
               <span>{copied ? '복사완료' : '계좌 복사'}</span>
             </button>
@@ -341,7 +337,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
               )}
             </button>
           </div>
-          
+
           <p className="text-[10px] text-gray-400 text-center select-none pt-1">
             송금 완료 후 꼭 '입금 완료' 버튼을 클릭하셔야 자동 접수되어 관리자가 승인할 수 있습니다.
           </p>
