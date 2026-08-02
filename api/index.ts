@@ -176,6 +176,9 @@ ${content}
   } catch (error: any) {
     console.error('Gemini API Correction Error:', error);
     let errorMessage = error.message || '자소서 교정 처리 중 오류가 발생했습니다.';
+    if (errorMessage.includes('API key not valid') || errorMessage.includes('API_KEY_INVALID') || error.status === 400) {
+      errorMessage = 'Gemini API 키가 유효하지 않거나 비활성화되었습니다. Google AI Studio (https://aistudio.google.com/app/apikey)에서 발급받으신 "AIzaSy..."로 시작하는 정식 API 키를 Vercel GEMINI_API_KEY 환경변수에 입력해 주세요.';
+    }
     return res.status(500).json({ error: errorMessage });
   }
 });
