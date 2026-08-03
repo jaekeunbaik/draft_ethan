@@ -7,6 +7,7 @@ interface HeaderProps {
   historyCount: number;
   user: any | null;
   isPro?: boolean;
+  proExpiresAt?: string | null;
   onOpenAuth: () => void;
   onSignOut: () => void;
   onOpenPayment?: () => void;
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   historyCount,
   user,
   isPro = false,
+  proExpiresAt,
   onOpenAuth,
   onSignOut,
   onOpenPayment,
@@ -44,6 +46,18 @@ export const Header: React.FC<HeaderProps> = ({
       return next;
     });
   };
+
+  const getRemainingDays = (expiresAtStr?: string | null) => {
+    if (!expiresAtStr) return null;
+    const now = Date.now();
+    const exp = new Date(expiresAtStr).getTime();
+    const diffMs = exp - now;
+    if (diffMs <= 0) return 0;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  };
+
+  const daysLeft = isPro ? getRemainingDays(proExpiresAt) : null;
+  const formattedExpiresDate = proExpiresAt ? new Date(proExpiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : null;
 
   return (
     <header className="w-full border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
@@ -123,8 +137,16 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                   
                   {isPro ? (
-                    <span className="text-[9px] font-extrabold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-0.5 select-none tracking-tight leading-none shrink-0">
-                      👑 PRO
+                    <span
+                      className="text-[9px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-250 flex items-center gap-1 select-none tracking-tight leading-none shrink-0 shadow-2xs cursor-help"
+                      title={formattedExpiresDate ? `PRO 이용권 만료 예정일: ${formattedExpiresDate}` : undefined}
+                    >
+                      <span>👑 PRO</span>
+                      {daysLeft !== null && (
+                        <span className="bg-amber-200/60 text-amber-900 px-1 py-0.5 rounded text-[8.5px] font-bold font-mono">
+                          {daysLeft > 0 ? `${daysLeft}일 남음` : '오늘 만료'}
+                        </span>
+                      )}
                     </span>
                   ) : (
                     <button

@@ -50,6 +50,7 @@ export default function App() {
 
   // Pro & Payment State
   const [isPro, setIsPro] = useState(false);
+  const [proExpiresAt, setProExpiresAt] = useState<string | null>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -73,6 +74,7 @@ export default function App() {
   useEffect(() => {
     if (!user) {
       setIsPro(false);
+      setProExpiresAt(null);
       setIsAdmin(false);
       return;
     }
@@ -97,6 +99,7 @@ export default function App() {
 
             if (!insertError && newProfile) {
               setIsPro(newProfile.is_pro);
+              setProExpiresAt(newProfile.pro_expires_at || null);
               setIsAdmin((newProfile as any).is_admin === true || checkIsAdminUser(user));
             }
           } else {
@@ -104,11 +107,13 @@ export default function App() {
           }
         } else if (data) {
           let activePro = data.is_pro;
-          if (activePro && data.pro_expires_at) {
-            const expiresDate = new Date(data.pro_expires_at);
+          let activeExp = data.pro_expires_at || null;
+          if (activePro && activeExp) {
+            const expiresDate = new Date(activeExp);
             if (expiresDate < new Date()) {
-              console.log('PRO membership expired on', data.pro_expires_at, '- auto downgrading to free tier...');
+              console.log('PRO membership expired on', activeExp, '- auto downgrading to free tier...');
               activePro = false;
+              activeExp = null;
               await supabase
                 .from('profiles')
                 .update({ is_pro: false, pro_expires_at: null })
@@ -116,11 +121,13 @@ export default function App() {
             }
           }
           setIsPro(activePro);
+          setProExpiresAt(activePro ? activeExp : null);
           setIsAdmin((data as any).is_admin === true || checkIsAdminUser(user));
         }
       } catch (err) {
         console.error('Failed to sync profile status:', err);
         setIsPro(false);
+        setProExpiresAt(null);
         setIsAdmin(checkIsAdminUser(user));
       }
     };
@@ -141,12 +148,14 @@ export default function App() {
         (payload: any) => {
           if (payload.new) {
             const nextPro = payload.new.is_pro;
+            const nextExp = payload.new.pro_expires_at || null;
             setIsPro((prevPro) => {
               if (!prevPro && nextPro) {
                 alert('🎉 축하합니다! 관리자 입금 확인이 완료되어 PRO 무제한 첨삭 기능이 즉시 활성화되었습니다!');
               }
               return nextPro;
             });
+            setProExpiresAt(nextPro ? nextExp : null);
             if (payload.new.is_admin !== undefined) {
               setIsAdmin(payload.new.is_admin === true || checkIsAdminUser(user));
             }
@@ -523,6 +532,7 @@ export default function App() {
         historyCount={history.length}
         user={user}
         isPro={isPro}
+        proExpiresAt={proExpiresAt}
         onOpenAuth={() => setIsAuthOpen(true)}
         onSignOut={handleSignOut}
         onOpenAdmin={() => setIsAdminOpen(true)}
