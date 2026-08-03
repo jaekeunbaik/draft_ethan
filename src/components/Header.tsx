@@ -137,17 +137,20 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                   
                   {isPro ? (
-                    <span
-                      className="text-[9px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-250 flex items-center gap-1 select-none tracking-tight leading-none shrink-0 shadow-2xs cursor-help"
-                      title={formattedExpiresDate ? `PRO 이용권 만료 예정일: ${formattedExpiresDate}` : undefined}
+                    <button
+                      onClick={onOpenPayment}
+                      className="text-xs font-extrabold text-amber-800 bg-amber-50 hover:bg-amber-100/80 px-2 py-1 rounded-lg border border-amber-250 hover:border-amber-400 flex items-center gap-1.5 cursor-pointer transition select-none shrink-0 shadow-2xs active:scale-95 group"
+                      title={formattedExpiresDate ? `PRO 이용권 만료 예정일: ${formattedExpiresDate} (클릭 시 이용권 추가 연장)` : 'PRO 이용권 추가 연장하기'}
                     >
-                      <span>👑 PRO</span>
+                      <span className="flex items-center gap-0.5 text-amber-700">
+                        <span>👑</span> PRO
+                      </span>
                       {daysLeft !== null && (
-                        <span className="bg-amber-200/60 text-amber-900 px-1 py-0.5 rounded text-[8.5px] font-bold font-mono">
+                        <span className="bg-amber-200/70 group-hover:bg-amber-300/80 text-amber-950 px-1.5 py-0.5 rounded text-[11px] font-bold leading-none tracking-tight">
                           {daysLeft > 0 ? `${daysLeft}일 남음` : '오늘 만료'}
                         </span>
                       )}
-                    </span>
+                    </button>
                   ) : (
                     <button
                       onClick={onOpenPayment}
