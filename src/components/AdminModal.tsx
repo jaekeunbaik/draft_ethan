@@ -95,9 +95,19 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     setActionLoadingId(userId);
     try {
       const nextStatus = !currentProStatus;
-      const expiresAt = nextStatus
-        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        : null;
+      let expiresAt: string | null = null;
+
+      if (nextStatus) {
+        let baseTime = Date.now();
+        const target = profiles.find((p) => p.id === userId);
+        if (target?.pro_expires_at) {
+          const currentExp = new Date(target.pro_expires_at).getTime();
+          if (currentExp > baseTime) {
+            baseTime = currentExp; // Stack onto existing expiration date!
+          }
+        }
+        expiresAt = new Date(baseTime + 30 * 24 * 60 * 60 * 1000).toISOString();
+      }
 
       const { error } = await supabase
         .from('profiles')
@@ -151,7 +161,23 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
       } else if (req.product.includes('30일')) {
         days = 30;
       }
-      const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+      // Check if user already has an active PRO subscription to accumulate (stack) remaining period
+      let baseTime = Date.now();
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('pro_expires_at, is_pro')
+        .eq('id', req.user_id)
+        .single();
+
+      if (userProfile?.is_pro && userProfile?.pro_expires_at) {
+        const currentExp = new Date(userProfile.pro_expires_at).getTime();
+        if (currentExp > baseTime) {
+          baseTime = currentExp; // Stack onto existing expiration date!
+        }
+      }
+
+      const expiresAt = new Date(baseTime + days * 24 * 60 * 60 * 1000).toISOString();
 
       // 1. Upgrade profile's is_pro status to true with pro_expires_at timestamp
       const { error: profileError } = await supabase
@@ -175,7 +201,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
         day: 'numeric',
       });
 
-      alert(`👑 [${req.depositor_name || '무명'}] 회원님의 이체 승인이 완료되었습니다.\nPRO 이용권(${days}일)이 활성화되었습니다!\n자동 만료 예정일: ${expiresDateStr}`);
+      alert(`👑 [${req.depositor_name || '무명'}] 회원님의 이체 승인이 완료되었습니다.\nPRO 이용권(${days}일)이 누적 추가되었습니다!\n자동 만료 예정일: ${expiresDateStr}`);
       
       // Update state locally
       setPaymentRequests((prev) =>
