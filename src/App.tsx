@@ -600,7 +600,12 @@ export default function App() {
               onClick={() => {
                 supabase.auth.signInWithOAuth({
                   provider: 'kakao',
-                  options: { redirectTo: window.location.origin }
+                  options: {
+                    redirectTo: window.location.origin,
+                    queryParams: {
+                      scope: 'profile_nickname,profile_image',
+                    },
+                  }
                 });
               }}
               className="px-6 py-3.5 bg-[#191919] hover:bg-black text-[#FEE500] text-sm font-extrabold rounded-xl shrink-0 cursor-pointer transition shadow-lg flex items-center justify-center space-x-2 active:scale-95 border border-yellow-400"
