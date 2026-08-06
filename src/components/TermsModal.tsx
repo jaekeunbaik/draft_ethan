@@ -43,12 +43,13 @@ export const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose }) => {
                     <div className="space-y-2">
                         <h4 className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
                             <Lock className="w-4 h-4 text-indigo-500" />
-                            제 2 조 (개인정보 수집 및 파기)
+                            제 2 조 (개인정보 수집, 쿠키 및 제3자 광고)
                         </h4>
                         <ul className="list-disc list-inside space-y-1 text-gray-550">
-                            <li>수집 항목: 로그인 이메일, 카카오 프로필 닉네임, 이용 내역</li>
-                            <li>수집 목적: 멤버십 서비스 제공, 무제한 첨삭 권한 확인, 고객 문의 대응</li>
-                            <li>보유 및 파기: 회원 탈퇴 시 즉시 파기 처리됩니다.</li>
+                            <li>수집 항목: 로그인 이메일, 프로필 정보, 이용 내역</li>
+                            <li>수집 목적: 멤버십 서비스 제공, 이용 권한 확인, 맞춤형 서비스 개선</li>
+                            <li>Google AdSense 관련: 본 사이트는 Google 및 제3자 광고 네트워크를 통해 맞춤형 광고를 제공할 수 있으며, 이전 방문 기록 기반 DART 쿠키가 사용될 수 있습니다. 이용자는 Google 광고 설정에서 수집을 거부할 수 있습니다.</li>
+                            <li>보유 및 파기: 회원 탈퇴 또는 목적 달성 시 파기 처리됩니다.</li>
                         </ul>
                     </div>
 
