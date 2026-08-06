@@ -112,13 +112,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <button
             onClick={handleKakaoLogin}
             disabled={isLoading}
-            className="w-full py-3 px-4 rounded-xl bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-bold text-xs flex items-center justify-center space-x-2 transition transform hover:scale-[1.01] active:scale-98 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 px-4 rounded-xl bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-extrabold text-sm flex items-center justify-center space-x-2 transition transform hover:scale-[1.02] active:scale-98 cursor-pointer shadow-lg shadow-yellow-500/20 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-yellow-400"
           >
             {/* Kakao logo path */}
-            <svg className="w-4 h-4 fill-[#191919] shrink-0" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 fill-[#191919] shrink-0" viewBox="0 0 24 24">
               <path d="M12 3c-5.52 0-10 3.58-10 8 0 2.92 1.92 5.48 4.8 6.92-.12.44-.8 2.88-.84 3.08-.04.2.08.28.24.16.12-.08 2.04-1.4 2.88-1.96.96.24 2 .36 2.92.36 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
             </svg>
-            <span>카카오로 시작하기</span>
+            <span>💛 1초 카카오 간편 로그인하기</span>
           </button>
 
           {/* Divider */}

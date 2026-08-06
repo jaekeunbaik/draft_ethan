@@ -582,18 +582,33 @@ export default function App() {
         )}
 
         {/* Form Section */}
-        {/* User context warning for CRO conversion (SaaS limit flow) */}
+        {/* High Conversion Kakao Login Banner for Guests */}
         {!user && (
-          <div className="bg-indigo-50 border border-indigo-100 text-indigo-900 rounded-xl p-4 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm">
-            <div>
-              <span className="font-bold">💡 실시간 영구 보존 기능 활성화</span>
-              <p className="text-xs text-indigo-700 mt-0.5">로그인하시면 작성하신 자기소개서와 AI 첨삭 결과 기록이 언제 어디서든 연동되어 안전하게 보관됩니다.</p>
+          <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 border-2 border-yellow-300 text-[#191919] rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transform hover:scale-[1.01] transition duration-300">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/10 text-xs font-black uppercase tracking-wider">
+                <span>🔥 3초 무료 팩폭 검수 이벤트</span>
+              </div>
+              <h3 className="font-extrabold text-base sm:text-lg tracking-tight text-gray-900">
+                회원가입 절차 0초! 카카오 1초 로그인하고 AI 팩폭 첨삭 받기
+              </h3>
+              <p className="text-xs text-gray-800 font-medium">
+                로그인하시면 작성하신 자기소개서와 AI 첨삭 결과가 내 계정에 평생 안전하게 보관됩니다.
+              </p>
             </div>
             <button
-              onClick={() => setIsAuthOpen(true)}
-              className="px-4 py-2 bg-indigo-650 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shrink-0 cursor-pointer transition active:scale-95"
+              onClick={() => {
+                supabase.auth.signInWithOAuth({
+                  provider: 'kakao',
+                  options: { redirectTo: window.location.origin }
+                });
+              }}
+              className="px-6 py-3.5 bg-[#191919] hover:bg-black text-[#FEE500] text-sm font-extrabold rounded-xl shrink-0 cursor-pointer transition shadow-lg flex items-center justify-center space-x-2 active:scale-95 border border-yellow-400"
             >
-              간편 로그인하고 보관하기
+              <svg className="w-5 h-5 fill-[#FEE500] shrink-0" viewBox="0 0 24 24">
+                <path d="M12 3c-5.52 0-10 3.58-10 8 0 2.92 1.92 5.48 4.8 6.92-.12.44-.8 2.88-.84 3.08-.04.2.08.28.24.16.12-.08 2.04-1.4 2.88-1.96.96.24 2 .36 2.92.36 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+              </svg>
+              <span>💛 1초 카카오 로그인</span>
             </button>
           </div>
         )}
