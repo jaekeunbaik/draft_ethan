@@ -1,10 +1,9 @@
+# Robots.txt for Draft Ethan (AI Cover Letter Architect)
 User-agent: *
 Allow: /
 
-User-agent: Mediapartners-Google
-Allow: /
+# Disable access to administrative endpoints or private data APIs if any
+Disallow: /api/
 
-User-agent: Googlebot
-Allow: /
-
-Sitemap: https://draft-ethan.vercel.app/sitemap.xml
+# Sitemap Location
+Sitemap: https://draft-ethan.com/sitemap.xml
