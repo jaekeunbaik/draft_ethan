@@ -581,6 +581,16 @@ export default function App() {
         {/* ⚡ 1초 자소서 팩폭 즉시 진단기 (Instant Roaster Widget) */}
         <InstantRoaster
           onStartFullAnalysis={(sampleText) => {
+            if (sampleText) {
+              setRequest((prev) => ({
+                question: prev?.question || '지원동기 및 주요 성과',
+                content: sampleText,
+                jobTitle: prev?.jobTitle || '백엔드 개발자',
+                companyName: prev?.companyName,
+                tone: prev?.tone || 'logical',
+                focusPoints: prev?.focusPoints || ['metrics', 'job_skills'],
+              }));
+            }
             if (!user) {
               setIsAuthOpen(true);
             } else {

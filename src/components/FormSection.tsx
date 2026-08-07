@@ -43,6 +43,16 @@ export const FormSection: React.FC<FormSectionProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sync state if initialRequest prop changes dynamically
+  React.useEffect(() => {
+    if (initialRequest) {
+      if (initialRequest.jobTitle) setJobTitle(initialRequest.jobTitle);
+      if (initialRequest.companyName) setCompanyName(initialRequest.companyName);
+      if (initialRequest.question) setQuestion(initialRequest.question);
+      if (initialRequest.content) setContent(initialRequest.content);
+    }
+  }, [initialRequest]);
+
   // Quick Preset Handlers
   const handleSelectSample = (preset: SamplePreset) => {
     setJobTitle(preset.jobTitle);
@@ -104,7 +114,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
 
   return (
-    <div className="bg-white border border-gray-200/80 rounded-2xl p-5 sm:p-7 shadow-sm text-gray-800">
+    <div id="form-section" className="bg-white border border-gray-200/80 rounded-2xl p-5 sm:p-7 shadow-sm text-gray-800">
       {/* Header bar inside form */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-gray-100 gap-3">
         <div>
