@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Copy, CheckCircle2, Instagram } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { notifyPaymentSuccess } from '../utils/discordNotifier';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -121,34 +122,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
         if (error) throw error;
       }
 
-      // 3. Send real-time notification to Discord Webhook directly
+      // 3. Send real-time notification to Discord Webhook
       try {
-        const webhookUrl =
-          import.meta.env.VITE_DISCORD_WEBHOOK_URL ||
-          'https://discord.com/api/webhooks/1533471768809836638/Xs8S5bFfdT_8dVwguB8qSmyjaehnQ81wXuaKvUum_K4mUo3CcF_5NRMdPTXBfBFBZRgx';
-
-        await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            embeds: [
-              {
-                title: '🔔 새로운 무통장 입금 확인 요청!',
-                color: 0x5865f2,
-                fields: [
-                  { name: '👤 입금자 성함', value: depositorName.trim() || '미입력', inline: true },
-                  { name: '💰 입금 금액', value: `${getAmount(selectedProduct).toLocaleString()}원`, inline: true },
-                  { name: '📦 신청 상품', value: getProductName(selectedProduct), inline: false },
-                  { name: '📧 신청자 이메일/ID', value: user?.email || `${user?.id || 'unknown'}@kakao.user`, inline: false },
-                ],
-                timestamp: new Date().toISOString(),
-                footer: {
-                  text: 'Draft Ethan Pro 입금 알림',
-                },
-              },
-            ],
-          }),
-        });
+        const userInfo = `${user?.email || `${user?.id || 'unknown'}@kakao.user`} (입금자명: ${depositorName.trim()})`;
+        await notifyPaymentSuccess(getAmount(selectedProduct), userInfo);
       } catch (notifyErr) {
         console.warn('Failed to send Discord notification:', notifyErr);
       }

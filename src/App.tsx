@@ -11,6 +11,7 @@ import { TermsModal } from './components/TermsModal';
 import { CorrectionRequest, CorrectionResponse, HistoryItem } from './types';
 import { AlertCircle, ArrowUp, Instagram, ShieldCheck } from 'lucide-react';
 import { supabase } from './lib/supabase';
+import { notifyVisitor, notifyCorrectionSuccess, notifyPaymentSuccess } from './utils/discordNotifier';
 
 const checkIsAdminUser = (user: any) => {
   if (!user) return false;
@@ -169,11 +170,21 @@ export default function App() {
     };
   }, [user]);
 
+  // Real-time visitor notification to Discord Webhook (with sessionStorage duplicate check)
+  useEffect(() => {
+    const visited = sessionStorage.getItem('draft_ethan_visited');
+    if (!visited) {
+      sessionStorage.setItem('draft_ethan_visited', 'true');
+      notifyVisitor();
+    }
+  }, []);
+
   // Handle URL redirect query parameters for payment callbacks
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('payment_success') === 'true') {
       alert('🎉 Pro 멤버십 결제가 성공적으로 완료되었습니다! 평생 무제한 첨삭 기능이 활성화되었습니다.');
+      notifyPaymentSuccess(3900, user?.email || 'PG 결제 유저');
       window.history.replaceState({}, document.title, window.location.pathname);
 
       // Instantly trigger re-checking profile to sync Badge
@@ -501,6 +512,7 @@ export default function App() {
 
       setResult(data);
       await saveToHistory(req, data);
+      notifyCorrectionSuccess(req.jobTitle, req.content ? req.content.length : 0);
 
       // Increment limits locally if using free tier
       if (!isPro) {
