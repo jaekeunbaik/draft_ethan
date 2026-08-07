@@ -66,6 +66,7 @@ const sendDiscordEmbed = async (options: SendDiscordEmbedOptions): Promise<boole
  */
 export const notifyVisitor = async (): Promise<boolean> => {
   const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
+  const referrer = typeof document !== 'undefined' ? (document.referrer || 'Direct Access / Bookmark') : 'Direct Access';
 
   let deviceType = '🖥️ PC (Desktop)';
   if (/mobile/i.test(userAgent)) deviceType = '📱 Mobile';
@@ -78,9 +79,10 @@ export const notifyVisitor = async (): Promise<boolean> => {
   else if (/safari/i.test(userAgent)) browserName = '🧭 Safari';
 
   return sendDiscordEmbed({
-    title: '👀 새로운 서비스 방문자 접속!',
+    title: '👀 [Draft Ethan] 새로운 유저 방문 접속!',
     color: 0x3498db, // Blue
     fields: [
+      { name: '🔗 유입 경로 (Referrer)', value: referrer, inline: false },
       { name: '🌐 접속 기기', value: deviceType, inline: true },
       { name: '🌐 브라우저', value: browserName, inline: true },
       { name: '🕒 접속 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
