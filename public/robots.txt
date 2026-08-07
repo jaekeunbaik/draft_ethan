@@ -6,4 +6,4 @@ Allow: /
 Disallow: /api/
 
 # Sitemap Location
-Sitemap: https://draft-ethan.com/sitemap.xml
+Sitemap: https://draft-ethan.vercel.app/sitemap.xml

@@ -4,8 +4,8 @@
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   <url>
-    <loc>https://draft-ethan.com/</loc>
-    <lastmod>2026-08-06</lastmod>
+    <loc>https://draft-ethan.vercel.app/</loc>
+    <lastmod>2026-08-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
