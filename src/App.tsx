@@ -171,13 +171,9 @@ export default function App() {
     };
   }, [user]);
 
-  // Real-time visitor notification to Discord Webhook (with sessionStorage duplicate check)
+  // Real-time visitor notification to Discord Webhook (Fires on every visit)
   useEffect(() => {
-    const visited = sessionStorage.getItem('draft_ethan_visited');
-    if (!visited) {
-      sessionStorage.setItem('draft_ethan_visited', 'true');
-      notifyVisitor();
-    }
+    notifyVisitor();
   }, []);
 
   // Handle URL redirect query parameters for payment callbacks
