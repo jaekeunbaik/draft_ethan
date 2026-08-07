@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
+import { InstantRoaster } from './components/InstantRoaster';
 import { FormSection } from './components/FormSection';
 import { ResultSection } from './components/ResultSection';
 import { HistoryModal } from './components/HistoryModal';
@@ -562,7 +563,7 @@ export default function App() {
       {/* Main Body Container */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8 space-y-8">
         {/* Hero Section */}
-        <div className="text-center space-y-4 pt-12 pb-8">
+        <div className="text-center space-y-4 pt-12 pb-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
             <span>✨</span>
             <span>Drafted by Ethan. Approved by Recruiters.</span>
@@ -576,6 +577,17 @@ export default function App() {
             어색한 문장은 다듬고, 지원 직무에 맞는 키워드만 정교하게 연결해 드립니다.
           </p>
         </div>
+
+        {/* ⚡ 1초 자소서 팩폭 즉시 진단기 (Instant Roaster Widget) */}
+        <InstantRoaster
+          onStartFullAnalysis={(sampleText) => {
+            if (!user) {
+              setIsAuthOpen(true);
+            } else {
+              document.getElementById('form-section')?.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+        />
 
         {/* Error Notification */}
         {error && (
