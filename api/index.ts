@@ -90,7 +90,8 @@ ${content}
 1. 원문의 구체적인 에피소드와 경험 사실관계는 그대로 유지하고, 추상적인 문장 표현을 명확한 비즈니스 용어로 교정하세요.
 2. 전체 교정본(correctedText)은 완결된 완성형 자기소개서 형태로 작성하세요.
 3. 주요 문장/단락별 Before & After 비교(lineByLineDiff) 항목을 최소 3개 이상 작성하고, 수정 사유(reason)를 친절히 설명하세요.
-4. 직무적합성, 가독성, 논리성, 구체성 평가 점수와 종합점수를 객관적으로 산출하세요.`,
+4. 직무적합성, 가독성, 논리성, 구체성 평가 점수와 종합점수를 객관적으로 산출하세요.
+5. 제출된 자소서를 읽은 깐깐한 대기업 면접관이 실제 면접에서 물어볼 법한 날카로운 꼬리 질문 3개(interviewQuestions)와 면접관 질문 의도(interviewerIntent), 사이다 모범 답안(modelAnswer), 답변 핵심 꿀팁(keyTip)을 필수로 생성하세요.`,
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,
@@ -124,6 +125,19 @@ ${content}
                 required: ['original', 'corrected', 'reason'],
               },
             },
+            interviewQuestions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  question: { type: Type.STRING },
+                  interviewerIntent: { type: Type.STRING },
+                  modelAnswer: { type: Type.STRING },
+                  keyTip: { type: Type.STRING },
+                },
+                required: ['question', 'interviewerIntent', 'modelAnswer', 'keyTip'],
+              },
+            },
           },
           required: [
             'headline',
@@ -135,6 +149,7 @@ ${content}
             'weaknesses',
             'recommendedKeywords',
             'lineByLineDiff',
+            'interviewQuestions',
           ],
         },
         temperature: 0.7,

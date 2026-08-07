@@ -19,6 +19,9 @@ import {
   Maximize2,
   Printer,
   ChevronRight,
+  MessageSquare,
+  HelpCircle,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface ResultSectionProps {
@@ -486,6 +489,97 @@ ${result.recommendedKeywords.join(', ')}
             ))}
           </div>
         </div>
+
+        {/* 🎙️ 1초 실전 압박 면접 대비 & 사이다 모범 답안 카드 */}
+        {result.interviewQuestions && result.interviewQuestions.length > 0 && (
+          <div className="mt-8 pt-6 border-t border-indigo-100 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-gradient-to-r from-slate-900 to-indigo-950 p-4 rounded-2xl text-white shadow-lg border border-indigo-500/20">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-md">
+                  <MessageSquare className="w-5 h-5 text-indigo-200" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-amber-400 text-slate-950 uppercase tracking-wider">
+                      NEW 🔥
+                    </span>
+                    <h3 className="text-base font-extrabold text-white">
+                      실전 압박 면접 대비 & 사이다 모범 답안
+                    </h3>
+                  </div>
+                  <p className="text-xs text-indigo-200 mt-0.5">
+                    이 자소서를 본 대기업 면접관이 실제 던질 법한 날카로운 꼬리 질문과 모범 답안입니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {result.interviewQuestions.map((iq, idx) => (
+                <div
+                  key={idx}
+                  className="bg-slate-900/5 border border-indigo-100 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm hover:border-indigo-300 transition"
+                >
+                  {/* Q Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start space-x-3">
+                      <span className="px-2.5 py-1 bg-rose-500 text-white font-extrabold text-xs rounded-lg shrink-0 mt-0.5">
+                        질문 0{idx + 1}
+                      </span>
+                      <h4 className="text-sm sm:text-base font-extrabold text-gray-900 leading-snug">
+                        &quot;{iq.question}&quot;
+                      </h4>
+                    </div>
+
+                    <button
+                      onClick={() => handleCopy(iq.modelAnswer, `iq-${idx}`)}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-semibold shrink-0 transition flex items-center space-x-1 cursor-pointer"
+                      title="모범 답안 복사"
+                    >
+                      {copiedKey === `iq-${idx}` ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-emerald-600">답안 복사됨</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>답안 복사</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Interviewer Intent */}
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-900 flex items-start space-x-2">
+                    <HelpCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="font-bold text-amber-900">😈 면접관 속마음 / 질문 의도:</strong>{' '}
+                      {iq.interviewerIntent}
+                    </div>
+                  </div>
+
+                  {/* Model Answer */}
+                  <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-1.5 text-xs sm:text-sm">
+                    <div className="flex items-center justify-between text-indigo-700 font-bold text-xs">
+                      <span>💡 사이다 모범 답안</span>
+                      <span className="text-[10px] text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded">합격 가이드</span>
+                    </div>
+                    <p className="text-gray-800 leading-relaxed font-medium whitespace-pre-wrap">
+                      &quot;{iq.modelAnswer}&quot;
+                    </p>
+                  </div>
+
+                  {/* Key Tip */}
+                  <div className="flex items-center space-x-2 text-xs text-gray-500 pt-1">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span><strong className="text-gray-700">면접 꿀팁:</strong> {iq.keyTip}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

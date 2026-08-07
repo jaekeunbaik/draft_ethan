@@ -21,6 +21,13 @@ export interface LineDiff {
   reason: string;
 }
 
+export interface InterviewQuestion {
+  question: string;
+  interviewerIntent: string;
+  modelAnswer: string;
+  keyTip: string;
+}
+
 export interface CorrectionResponse {
   headline: string;
   correctedText: string;
@@ -31,6 +38,7 @@ export interface CorrectionResponse {
   weaknesses: string[];
   recommendedKeywords: string[];
   lineByLineDiff: LineDiff[];
+  interviewQuestions?: InterviewQuestion[];
   summaryComparison?: {
     beforeWordCount: number;
     afterWordCount: number;
