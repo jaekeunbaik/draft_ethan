@@ -90,11 +90,17 @@ ${question || '자유 지원 항목'}
 ${content}
 `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          systemInstruction: `당신은 대한민국 최고 수준의 채용 컨설턴트이자 자소서 전문 에디터입니다.
+      const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+      let response: any = null;
+      let lastError: any = null;
+
+      for (const model of modelsToTry) {
+        try {
+          response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+              systemInstruction: `당신은 대한민국 최고 수준의 채용 컨설턴트이자 자소서 전문 에디터입니다.
 제출된 자기소개서를 희망 직무와 지원 기업의 핵심 역량에 완벽히 매칭되도록 가독성, 논리력, 두괄식 어법, 성과 표현을 대폭 다듬으세요.
 
 지침:
@@ -102,81 +108,91 @@ ${content}
 2. 전체 교정본(correctedText)은 완결된 완성형 자기소개서 형태로 작성하세요.
 3. 주요 문장/단락별 Before & After 비교(lineByLineDiff) 항목을 최소 3개 이상 작성하고, 수정 사유(reason)를 친절히 설명하세요.
 4. 직무적합성, 가독성, 논리성, 구체성 평가 점수와 종합점수를 객관적으로 산출하세요.`,
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              headline: {
-                type: Type.STRING,
-                description: '교정된 자소서를 한눈에 보여주는 임팩트 있는 대표 헤드라인',
-              },
-              correctedText: {
-                type: Type.STRING,
-                description: '완성도 높게 첨삭 교정된 자기소개서 전체 텍스트',
-              },
-              feedbacks: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: '핵심 첨삭 제안 포인트 3~5가지',
-              },
-              overallScore: {
-                type: Type.INTEGER,
-                description: '종합 역량 평가 점수 (0-100)',
-              },
-              scoreBreakdown: {
+              responseMimeType: 'application/json',
+              responseSchema: {
                 type: Type.OBJECT,
                 properties: {
-                  jobFit: { type: Type.INTEGER, description: '직무 적합성 (0-100)' },
-                  readability: { type: Type.INTEGER, description: '가독성 및 어휘력 (0-100)' },
-                  logic: { type: Type.INTEGER, description: '논리성 및 구성 (0-100)' },
-                  specificity: { type: Type.INTEGER, description: '구체성 및 성과표현 (0-100)' },
-                },
-                required: ['jobFit', 'readability', 'logic', 'specificity'],
-              },
-              strengths: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: '원문의 돋보이는 강점 및 우수한 점 2~4개',
-              },
-              weaknesses: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: '원문의 보완이 필요한 개선 포인트 2~4개',
-              },
-              recommendedKeywords: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: '해당 직무 맞춤 어휘 및 추천 키워드 4~8개',
-              },
-              lineByLineDiff: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    original: { type: Type.STRING, description: '교정 전 원문 문장 또는 단락' },
-                    corrected: { type: Type.STRING, description: '교정 후 개선된 문장 또는 단락' },
-                    reason: { type: Type.STRING, description: '수정 이유 및 개선 효과' },
+                  headline: {
+                    type: Type.STRING,
+                    description: '교정된 자소서를 한눈에 보여주는 임팩트 있는 대표 헤드라인',
                   },
-                  required: ['original', 'corrected', 'reason'],
+                  correctedText: {
+                    type: Type.STRING,
+                    description: '완성도 높게 첨삭 교정된 자기소개서 전체 텍스트',
+                  },
+                  feedbacks: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: '핵심 첨삭 제안 포인트 3~5가지',
+                  },
+                  overallScore: {
+                    type: Type.INTEGER,
+                    description: '종합 역량 평가 점수 (0-100)',
+                  },
+                  scoreBreakdown: {
+                    type: Type.OBJECT,
+                    properties: {
+                      jobFit: { type: Type.INTEGER, description: '직무 적합성 (0-100)' },
+                      readability: { type: Type.INTEGER, description: '가독성 및 어휘력 (0-100)' },
+                      logic: { type: Type.INTEGER, description: '논리성 및 구성 (0-100)' },
+                      specificity: { type: Type.INTEGER, description: '구체성 및 성과표현 (0-100)' },
+                    },
+                    required: ['jobFit', 'readability', 'logic', 'specificity'],
+                  },
+                  strengths: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: '원문의 돋보이는 강점 및 우수한 점 2~4개',
+                  },
+                  weaknesses: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: '원문의 보완이 필요한 개선 포인트 2~4개',
+                  },
+                  recommendedKeywords: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: '해당 직무 맞춤 어휘 및 추천 키워드 4~8개',
+                  },
+                  lineByLineDiff: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        original: { type: Type.STRING, description: '교정 전 원문 문장 또는 단락' },
+                        corrected: { type: Type.STRING, description: '교정 후 개선된 문장 또는 단락' },
+                        reason: { type: Type.STRING, description: '수정 이유 및 개선 효과' },
+                      },
+                      required: ['original', 'corrected', 'reason'],
+                    },
+                    description: '핵심 문장/단락별 Before & After 비교 및 사유',
+                  },
                 },
-                description: '핵심 문장/단락별 Before & After 비교 및 사유',
+                required: [
+                  'headline',
+                  'correctedText',
+                  'feedbacks',
+                  'overallScore',
+                  'scoreBreakdown',
+                  'strengths',
+                  'weaknesses',
+                  'recommendedKeywords',
+                  'lineByLineDiff',
+                ],
               },
+              temperature: 0.7,
             },
-            required: [
-              'headline',
-              'correctedText',
-              'feedbacks',
-              'overallScore',
-              'scoreBreakdown',
-              'strengths',
-              'weaknesses',
-              'recommendedKeywords',
-              'lineByLineDiff',
-            ],
-          },
-          temperature: 0.7,
-        },
-      });
+          });
+          if (response && response.text) break;
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`[Gemini API Warning] Model ${model} failed, trying fallback:`, err.message);
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error('Gemini API 호출에 실패했습니다.');
+      }
 
       const resultText = response.text;
 

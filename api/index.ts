@@ -79,11 +79,17 @@ ${question || '자유 지원 항목'}
 ${content}
 `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        systemInstruction: `당신은 대한민국 최고 수준의 채용 컨설턴트이자 자소서 전문 에디터입니다.
+    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+    let response: any = null;
+    let lastError: any = null;
+
+    for (const model of modelsToTry) {
+      try {
+        response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            systemInstruction: `당신은 대한민국 최고 수준의 채용 컨설턴트이자 자소서 전문 에디터입니다.
 제출된 자기소개서를 희망 직무와 지원 기업의 핵심 역량에 완벽히 매칭되도록 가독성, 논리력, 두괄식 어법, 성과 표현을 대폭 다듬으세요.
 
 지침:
@@ -92,69 +98,79 @@ ${content}
 3. 주요 문장/단락별 Before & After 비교(lineByLineDiff) 항목을 최소 3개 이상 작성하고, 수정 사유(reason)를 친절히 설명하세요.
 4. 직무적합성, 가독성, 논리성, 구체성 평가 점수와 종합점수를 객관적으로 산출하세요.
 5. 제출된 자소서를 읽은 깐깐한 대기업 면접관이 실제 면접에서 물어볼 법한 날카로운 꼬리 질문 3개(interviewQuestions)와 면접관 질문 의도(interviewerIntent), 사이다 모범 답안(modelAnswer), 답변 핵심 꿀팁(keyTip)을 필수로 생성하세요.`,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            headline: { type: Type.STRING },
-            correctedText: { type: Type.STRING },
-            feedbacks: { type: Type.ARRAY, items: { type: Type.STRING } },
-            overallScore: { type: Type.INTEGER },
-            scoreBreakdown: {
+            responseMimeType: 'application/json',
+            responseSchema: {
               type: Type.OBJECT,
               properties: {
-                jobFit: { type: Type.INTEGER },
-                readability: { type: Type.INTEGER },
-                logic: { type: Type.INTEGER },
-                specificity: { type: Type.INTEGER },
-              },
-              required: ['jobFit', 'readability', 'logic', 'specificity'],
-            },
-            strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
-            weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
-            recommendedKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-            lineByLineDiff: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  original: { type: Type.STRING },
-                  corrected: { type: Type.STRING },
-                  reason: { type: Type.STRING },
+                headline: { type: Type.STRING },
+                correctedText: { type: Type.STRING },
+                feedbacks: { type: Type.ARRAY, items: { type: Type.STRING } },
+                overallScore: { type: Type.INTEGER },
+                scoreBreakdown: {
+                  type: Type.OBJECT,
+                  properties: {
+                    jobFit: { type: Type.INTEGER },
+                    readability: { type: Type.INTEGER },
+                    logic: { type: Type.INTEGER },
+                    specificity: { type: Type.INTEGER },
+                  },
+                  required: ['jobFit', 'readability', 'logic', 'specificity'],
                 },
-                required: ['original', 'corrected', 'reason'],
-              },
-            },
-            interviewQuestions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  question: { type: Type.STRING },
-                  interviewerIntent: { type: Type.STRING },
-                  modelAnswer: { type: Type.STRING },
-                  keyTip: { type: Type.STRING },
+                strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+                weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+                recommendedKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+                lineByLineDiff: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      original: { type: Type.STRING },
+                      corrected: { type: Type.STRING },
+                      reason: { type: Type.STRING },
+                    },
+                    required: ['original', 'corrected', 'reason'],
+                  },
                 },
-                required: ['question', 'interviewerIntent', 'modelAnswer', 'keyTip'],
+                interviewQuestions: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      question: { type: Type.STRING },
+                      interviewerIntent: { type: Type.STRING },
+                      modelAnswer: { type: Type.STRING },
+                      keyTip: { type: Type.STRING },
+                    },
+                    required: ['question', 'interviewerIntent', 'modelAnswer', 'keyTip'],
+                  },
+                },
               },
+              required: [
+                'headline',
+                'correctedText',
+                'feedbacks',
+                'overallScore',
+                'scoreBreakdown',
+                'strengths',
+                'weaknesses',
+                'recommendedKeywords',
+                'lineByLineDiff',
+                'interviewQuestions',
+              ],
             },
+            temperature: 0.7,
           },
-          required: [
-            'headline',
-            'correctedText',
-            'feedbacks',
-            'overallScore',
-            'scoreBreakdown',
-            'strengths',
-            'weaknesses',
-            'recommendedKeywords',
-            'lineByLineDiff',
-            'interviewQuestions',
-          ],
-        },
-        temperature: 0.7,
-      },
-    });
+        });
+        if (response && response.text) break;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[Gemini API Warning] Model ${model} failed, trying fallback:`, err.message);
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error('Gemini API 호출에 실패했습니다.');
+    }
 
     const resultText = response.text;
     if (!resultText) {
