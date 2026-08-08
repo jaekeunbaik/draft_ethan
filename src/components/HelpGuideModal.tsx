@@ -65,7 +65,7 @@ export const HelpGuideModal: React.FC<HelpGuideModalProps> = ({ isOpen, onClose 
           {/* How AI Help Works */}
           <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-2">
             <h5 className="font-bold text-indigo-900 text-xs">
-              💡 Draft Ethan AI 자소서 첨삭 활용 팁
+              💡 Dethan (디든) AI 자소서 첨삭 활용 팁
             </h5>
             <ul className="text-xs text-gray-650 space-y-1.5 list-disc list-inside">
               <li>희망 직무와 지원 기업명을 정확히 입력할수록 기업 인재상에 맞춰 교정됩니다.</li>

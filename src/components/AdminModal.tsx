@@ -270,7 +270,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
             <Shield className="w-5 h-5 text-indigo-300" />
             <div>
               <h3 className="font-extrabold tracking-tight text-base">
-                Draft Ethan <span className="text-amber-400">Pro</span> 어드민 제어판
+                Dethan <span className="text-amber-400">Pro</span> 어드민 제어판
               </h3>
               <p className="text-[10px] text-indigo-200">
                 입금 확인 요청을 기반으로 회원의 등급을 한 번에 승인 제어합니다.

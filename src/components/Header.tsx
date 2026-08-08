@@ -69,10 +69,10 @@ export const Header: React.FC<HeaderProps> = ({
           title="5번 연속 클릭 시 관리자 모드가 표시됩니다"
         >
           <span className="font-extrabold tracking-tight text-xl text-gray-900">
-            Draft <span className="text-indigo-600">Ethan</span>
+            D<span className="text-indigo-600">ethan</span>
           </span>
-          <span className="text-[10px] bg-indigo-50 text-indigo-600 font-mono font-medium px-2 py-0.5 rounded-full border border-indigo-100">
-            AI Studio Engine
+          <span className="text-[10px] bg-indigo-50 text-indigo-600 font-medium px-2 py-0.5 rounded-full border border-indigo-100">
+            디든 AI Studio
           </span>
         </div>
 
@@ -92,6 +92,16 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Gemini 3.5 Active
           </span>
+
+          <a
+            href="https://cringeguard-ai.vercel.app"
+            target="_blank"
+            rel="noreferrer"
+            className="hidden md:inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-lg transition"
+            title="SNS 글 이불킥 검수 및 교정 AI 서비스 DeCringe 바로가기"
+          >
+            🔥 DeCringe AI
+          </a>
           
           <button
             onClick={onOpenHelp}

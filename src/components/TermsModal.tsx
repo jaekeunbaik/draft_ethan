@@ -35,7 +35,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose }) => {
                             제 1 조 (서비스 이용 및 데이터 저장 지침)
                         </h4>
                         <p className="text-gray-550">
-                            Draft Ethan은 사용자가 제출한 자기소개서 문장을 AI(Google Gemini) 분석 및 첨삭 목적으로만 일시 처리합니다. 제출된 본문은 사용자의 사전 동의 없이 외부에 공유되거나 무단으로 저장되지 않습니다.
+                            Dethan (디든)은 사용자가 제출한 자기소개서 문장을 AI(Google Gemini) 분석 및 첨삭 목적으로만 일시 처리합니다. 제출된 본문은 사용자의 사전 동의 없이 외부에 공유되거나 무단으로 저장되지 않습니다.
                         </p>
                     </div>
 

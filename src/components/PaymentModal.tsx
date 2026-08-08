@@ -23,7 +23,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
   };
 
   const getProductName = (type: ProductType) => {
-    return type === '7days' ? 'Draft Ethan Pro 7일 무제한 이용권' : 'Draft Ethan Pro 30일 무제한 이용권';
+    return type === '7days' ? 'Dethan Pro 7일 무제한 이용권' : 'Dethan Pro 30일 무제한 이용권';
   };
 
   // 1. Log payment modal open intent
@@ -159,7 +159,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
             Premium Pass
           </div>
           <h3 className="font-extrabold tracking-tight text-xl">
-            Draft Ethan <span className="text-amber-400">Pro</span> 기간권 선택
+            Dethan <span className="text-amber-400">Pro</span> 기간권 선택
           </h3>
           <p className="text-xs text-indigo-200 mt-1">
             가벼운 가격으로 원클릭 무제한 자소서 첨삭 기능을 완전히 잠금해제 하세요.

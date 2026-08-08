@@ -51,6 +51,77 @@ export const ResultSection: React.FC<ResultSectionProps> = ({
     }
   };
 
+  const handleCopyAll = () => {
+    const fullText = `=========================================
+[Dethan 디든 AI 자소서 첨삭 리포트]
+- 지원 직무: ${request.jobTitle}
+- 지원 기업: ${request.companyName || '미지정'}
+- 종합 역량 점수: ${result.overallScore}점 / 100점
+=========================================
+
+[대표 헤드라인]
+${result.headline}
+
+[교정 자소서 전문]
+${result.correctedText}
+
+=========================================
+[수석 컨설턴트 피드백]
+${result.feedbacks.map((f, i) => `${i + 1}. ${f}`).join('\n')}
+
+[면접 꼬리 질문 및 모범 답안]
+${(result.interviewQuestions || []).map((iq, i) => `Q${i + 1}. ${iq.question}\n- 면접관 의도: ${iq.interviewerIntent}\n- 사이다 모범 답안: ${iq.modelAnswer}\n- 꿀팁: ${iq.keyTip}`).join('\n\n')}
+`;
+
+    navigator.clipboard.writeText(fullText);
+    alert('✨ 전체 첨삭본 + 면접 모범답안이 클립보드에 완벽 복사되었습니다!');
+  };
+
+  const handleKakaoReportShare = () => {
+    const shareTitle = `[Dethan 디든] ✨ ${request.jobTitle} 자소서 AI 첨삭 완료!`;
+    const shareDesc = `종합 역량 점수: ${result.overallScore}점 / 100점\n"${result.headline}"`;
+    const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://draft-ethan.vercel.app';
+
+    if (typeof window !== 'undefined' && (window as any).Kakao) {
+      const kakao = (window as any).Kakao;
+      if (!kakao.isInitialized()) {
+        try {
+          kakao.init('18bfdf8872f2d93e1176b509ef488a03');
+        } catch (e) {
+          console.warn('Kakao init fallback:', e);
+        }
+      }
+      if (kakao.Share) {
+        kakao.Share.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: shareTitle,
+            description: shareDesc,
+            imageUrl: `${shareUrl}/assets/og-image.png`,
+            link: {
+              mobileWebUrl: shareUrl,
+              webUrl: shareUrl,
+            },
+          },
+          buttons: [
+            {
+              title: '📝 AI 자소서 첨삭 받기',
+              link: {
+                mobileWebUrl: shareUrl,
+                webUrl: shareUrl,
+              },
+            },
+          ],
+        });
+        return;
+      }
+    }
+
+    const copyText = `${shareTitle}\n${shareDesc}\n👉 ${shareUrl}`;
+    navigator.clipboard.writeText(copyText);
+    alert('📋 카카오톡 공유 문구가 클립보드에 복사되었습니다!');
+  };
+
   const handleDownloadTxt = () => {
     const textContent = `=========================================
 [AI 자소서 첨삭 리포트]
@@ -250,7 +321,27 @@ ${result.recommendedKeywords.join(', ')}
           </div>
 
           {/* Export & Actions Toolbar */}
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={handleKakaoReportShare}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-[#FEE500] hover:bg-[#FDD800] text-[#191919] text-xs font-bold transition cursor-pointer active:scale-95 shadow-2xs"
+              title="카카오톡으로 첨삭 결과 리포트 공유"
+            >
+              <svg className="w-3.5 h-3.5 fill-[#191919]" viewBox="0 0 24 24">
+                <path d="M12 3c-5.52 0-10 3.58-10 8 0 2.92 1.92 5.48 4.8 6.92-.12.44-.8 2.88-.84 3.08-.04.2.08.28.24.16.12-.08 2.04-1.4 2.88-1.96.96.24 2 .36 2.92.36 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+              </svg>
+              <span>카톡 공유</span>
+            </button>
+
+            <button
+              onClick={handleCopyAll}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition cursor-pointer shadow-sm active:scale-95"
+              title="교정본 + 면접 질문 + 피드백 전체 한 번에 복사"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>전체 리포트 복사</span>
+            </button>
+
             <button
               onClick={() => handleCopy(result.correctedText)}
               className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 text-xs font-medium transition cursor-pointer"
@@ -263,7 +354,7 @@ ${result.recommendedKeywords.join(', ')}
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5" />
-                  <span>교정본 복사</span>
+                  <span>교정본만 복사</span>
                 </>
               )}
             </button>

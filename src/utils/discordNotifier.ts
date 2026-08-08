@@ -1,6 +1,6 @@
 /**
  * Discord Webhook 실시간 알림 유틸리티 모듈
- * Draft Ethan 서비스 모니터링
+ * Dethan (디든) 서비스 모니터링
  */
 
 const getWebhookUrl = (): string | undefined => {
@@ -36,7 +36,7 @@ const sendDiscordEmbed = async (options: SendDiscordEmbedOptions): Promise<boole
           fields: options.fields || [],
           timestamp: new Date().toISOString(),
           footer: {
-            text: options.footerText || 'Draft Ethan Real-time Monitoring',
+            text: options.footerText || 'Dethan Real-time Monitoring',
           },
         },
       ],
@@ -80,7 +80,7 @@ export const notifyVisitor = async (): Promise<boolean> => {
   else if (/safari/i.test(userAgent)) browserName = '🧭 Safari';
 
   return sendDiscordEmbed({
-    title: '👀 [Draft Ethan] 새로운 유저 방문 접속!',
+    title: '👀 [Dethan 디든] 새로운 유저 방문 접속!',
     color: 0x3498db, // Blue
     fields: [
       { name: '🔗 유입 경로 (Referrer)', value: referrer, inline: false },
@@ -89,7 +89,7 @@ export const notifyVisitor = async (): Promise<boolean> => {
       { name: '🕒 접속 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
       { name: '📱 User-Agent', value: `\`\`\`${userAgent.substring(0, 150)}\`\`\``, inline: false },
     ],
-    footerText: 'Draft Ethan 방문자 실시간 모니터링',
+    footerText: 'Dethan (디든) 방문자 실시간 모니터링',
   });
 };
 
@@ -101,14 +101,14 @@ export const notifyCorrectionSuccess = async (
   charCount: number
 ): Promise<boolean> => {
   return sendDiscordEmbed({
-    title: '✨ 자소서 AI 첨삭 완료!',
+    title: '✨ [Dethan 디든] 자소서 AI 첨삭 완료!',
     color: 0x2ecc71, // Emerald Green
     fields: [
       { name: '🎯 지원 직무', value: jobTitle || '미지정', inline: true },
       { name: '📝 자소서 글자 수', value: `${charCount.toLocaleString()}자`, inline: true },
       { name: '⏰ 첨삭 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
     ],
-    footerText: 'Draft Ethan AI 첨삭 모니터링',
+    footerText: 'Dethan (디든) AI 첨삭 모니터링',
   });
 };
 
@@ -127,6 +127,6 @@ export const notifyPaymentSuccess = async (
       { name: '👤 유저 식별 정보', value: email || '익명/미확인 유저', inline: true },
       { name: '🕒 결제 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
     ],
-    footerText: 'Draft Ethan Pro 입금/결제 알림',
+    footerText: 'Dethan Pro 입금/결제 알림',
   });
 };

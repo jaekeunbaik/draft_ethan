@@ -214,7 +214,7 @@ app.post('/api/notify-deposit', async (req, res) => {
         body: JSON.stringify({
           embeds: [
             {
-              title: '🔔 새로운 무통장 입금 확인 요청!',
+              title: '🔔 [Dethan 디든] 새로운 무통장 입금 확인 요청!',
               color: 0x5865f2,
               fields: [
                 { name: '👤 입금자 성함', value: depositorName || '미입력', inline: true },
@@ -223,7 +223,7 @@ app.post('/api/notify-deposit', async (req, res) => {
                 { name: '📧 신청자 이메일/ID', value: email || '미입력', inline: false },
               ],
               timestamp: new Date().toISOString(),
-              footer: { text: 'Draft Ethan Pro 입금 알림' },
+              footer: { text: 'Dethan Pro 입금 알림' },
             },
           ],
         }),

@@ -46,6 +46,53 @@ export const InstantRoaster: React.FC<InstantRoasterProps> = ({ onStartFullAnaly
   const [isRoasting, setIsRoasting] = useState(false);
   const [roastResult, setRoastResult] = useState<PresetSample | null>(null);
 
+  const handleKakaoShare = () => {
+    if (!roastResult) return;
+
+    const shareTitle = `[Dethan 디든] 🎯 내 자소서 팩폭 점수는 ${roastResult.score}점!`;
+    const shareDesc = `"${roastResult.roast}"\n\nAI가 추천한 합격 문장:\n${roastResult.after}`;
+    const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://draft-ethan.vercel.app';
+
+    if (typeof window !== 'undefined' && (window as any).Kakao) {
+      const kakao = (window as any).Kakao;
+      if (!kakao.isInitialized()) {
+        try {
+          kakao.init('18bfdf8872f2d93e1176b509ef488a03');
+        } catch (e) {
+          console.warn('Kakao init fallback:', e);
+        }
+      }
+      if (kakao.Share) {
+        kakao.Share.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: shareTitle,
+            description: shareDesc,
+            imageUrl: `${shareUrl}/assets/og-image.png`,
+            link: {
+              mobileWebUrl: shareUrl,
+              webUrl: shareUrl,
+            },
+          },
+          buttons: [
+            {
+              title: '🎯 AI 팩폭 진단 받기',
+              link: {
+                mobileWebUrl: shareUrl,
+                webUrl: shareUrl,
+              },
+            },
+          ],
+        });
+        return;
+      }
+    }
+
+    const copyText = `${shareTitle}\n${shareDesc}\n👉 ${shareUrl}`;
+    navigator.clipboard.writeText(copyText);
+    alert('📋 카카오톡 공유 문구가 클립보드에 복사되었습니다! 카톡으로 친구에게 공유해보세요.');
+  };
+
   const handleRoast = (customText?: string) => {
     const textToAnalyze = (customText || inputText).trim();
     if (!textToAnalyze) {
@@ -184,14 +231,27 @@ export const InstantRoaster: React.FC<InstantRoasterProps> = ({ onStartFullAnaly
               </div>
             </div>
 
-            <button
-              onClick={() => onStartFullAnalysis(roastResult.after)}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-1.5 cursor-pointer shrink-0"
-            >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>전체 자소서 AI 첨삭 받기</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                onClick={handleKakaoShare}
+                className="px-3.5 py-2.5 bg-[#FEE500] hover:bg-[#FDD800] text-[#191919] font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
+                title="카카오톡으로 내 팩폭 점수 공유하기"
+              >
+                <svg className="w-4 h-4 fill-[#191919]" viewBox="0 0 24 24">
+                  <path d="M12 3c-5.52 0-10 3.58-10 8 0 2.92 1.92 5.48 4.8 6.92-.12.44-.8 2.88-.84 3.08-.04.2.08.28.24.16.12-.08 2.04-1.4 2.88-1.96.96.24 2 .36 2.92.36 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+                </svg>
+                <span>카톡 공유</span>
+              </button>
+
+              <button
+                onClick={() => onStartFullAnalysis(roastResult.after)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-1.5 cursor-pointer shrink-0"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>전체 자소서 AI 첨삭 받기</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Before & After Comparison Card */}
@@ -210,7 +270,7 @@ export const InstantRoaster: React.FC<InstantRoasterProps> = ({ onStartFullAnaly
             {/* After */}
             <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-4 space-y-1.5">
               <div className="flex items-center justify-between text-emerald-400 font-bold text-xs">
-                <span>✨ AFTER (Ethan AI 합격 문장)</span>
+                <span>✨ AFTER (Dethan AI 합격 문장)</span>
                 <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded font-extrabold">면접관 승인!</span>
               </div>
               <p className="text-emerald-200 leading-relaxed font-semibold">

@@ -562,11 +562,11 @@ export default function App() {
         <div className="text-center space-y-4 pt-12 pb-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
             <span>✨</span>
-            <span>Drafted by Ethan. Approved by Recruiters.</span>
+            <span>Drafted by Dethan. Approved by Recruiters.</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 tracking-tight">
-            자소서 고민, <span className="text-indigo-600">Ethan</span>에게 맡기세요
+            자소서 고민, <span className="text-indigo-600">Dethan (디든)</span>에게 맡기세요
           </h1>
 
           <p className="text-gray-500 text-base max-w-md mx-auto leading-relaxed">
@@ -653,6 +653,7 @@ export default function App() {
           isLoading={isLoading}
           initialRequest={request}
           isPro={isPro}
+          remainingFreeUsage={Math.max(0, 3 - getFreeUsageToday())}
           onOpenUpgrade={() => {
             if (!user) {
               alert('PRO 요금제 기능을 잠금해제하려면 먼저 로그인이 필요합니다.');
@@ -688,7 +689,7 @@ export default function App() {
       <footer className="border-t border-gray-100 bg-white py-8 text-center text-xs text-gray-500 mt-12">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-3 text-left">
-            <span className="font-semibold text-gray-800">Draft Ethan</span>
+            <span className="font-semibold text-gray-800">Dethan (디든)</span>
             <span className="text-gray-300">•</span>
             <button
               onClick={() => setIsTermsOpen(true)}
@@ -700,6 +701,15 @@ export default function App() {
           </div>
 
           <div className="flex items-center space-x-3">
+            <a
+              href="https://cringeguard-ai.vercel.app"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-xs shadow-2xs transition cursor-pointer"
+            >
+              <span>🔥 DeCringe AI (SNS 흑역사 검수)</span>
+            </a>
+
             <a
               href="https://www.instagram.com/draft_ethan?igsh=MXJubXc5cjJ5ZTA1Zw=="
               target="_blank"

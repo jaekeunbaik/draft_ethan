@@ -85,7 +85,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         {/* Modal Header */}
         <div className="p-6 pb-4 text-center space-y-2 mt-4">
           <h3 className="font-extrabold tracking-tight text-2xl text-gray-900">
-            Draft <span className="text-indigo-600">Ethan</span>
+            D<span className="text-indigo-600">ethan</span> <span className="text-xs font-semibold text-gray-500">(디든)</span>
           </h3>
           <p className="text-xs text-gray-500 font-medium">
             막히는 초안부터 직무 맞춤 첨삭까지, AI 자소서 아키텍트
@@ -207,7 +207,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
         {/* Modal Footer */}
         <div className="p-4 border-t border-gray-50 bg-gray-50/50 text-center text-[10px] text-gray-400">
-          계정 생성 시 Draft Ethan의 서비스 이용약관 및 개인정보 처리방침에 동의한 것으로 간주됩니다.
+          계정 생성 시 Dethan (디든)의 서비스 이용약관 및 개인정보 처리방침에 동의한 것으로 간주됩니다.
         </div>
 
       </div>
