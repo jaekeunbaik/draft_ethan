@@ -79,7 +79,7 @@ ${question || '자유 지원 항목'}
 ${content}
 `;
 
-    const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'];
+    const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro'];
     let response: any = null;
     let lastError: any = null;
 
