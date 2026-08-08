@@ -49,9 +49,9 @@ export const InstantRoaster: React.FC<InstantRoasterProps> = ({ onStartFullAnaly
   const handleKakaoShare = () => {
     if (!roastResult) return;
 
-    const shareTitle = `[Dethan 디든] 🎯 내 자소서 팩폭 점수는 ${roastResult.score}점!`;
-    const shareDesc = `"${roastResult.roast}"\n\nAI가 추천한 합격 문장:\n${roastResult.after}`;
-    const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://draft-ethan.vercel.app';
+    const shareTitle = `🔥 [Dethan 디든] 자소서 팩폭 점수 ${roastResult.score}점!`;
+    const shareDesc = `👿 팩폭: "${roastResult.roast}"\n✨ AI 합격 추천 문장 확인하기`;
+    const shareUrl = 'https://draft-ethan.vercel.app';
 
     if (typeof window !== 'undefined' && (window as any).Kakao) {
       const kakao = (window as any).Kakao;
@@ -68,7 +68,7 @@ export const InstantRoaster: React.FC<InstantRoasterProps> = ({ onStartFullAnaly
           content: {
             title: shareTitle,
             description: shareDesc,
-            imageUrl: `${shareUrl}/assets/og-image.png`,
+            imageUrl: 'https://draft-ethan.vercel.app/og-image.png',
             link: {
               mobileWebUrl: shareUrl,
               webUrl: shareUrl,

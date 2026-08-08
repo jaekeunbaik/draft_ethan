@@ -78,9 +78,9 @@ ${(result.interviewQuestions || []).map((iq, i) => `Q${i + 1}. ${iq.question}\n-
   };
 
   const handleKakaoReportShare = () => {
-    const shareTitle = `[Dethan 디든] ✨ ${request.jobTitle} 자소서 AI 첨삭 완료!`;
-    const shareDesc = `종합 역량 점수: ${result.overallScore}점 / 100점\n"${result.headline}"`;
-    const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://draft-ethan.vercel.app';
+    const shareTitle = `🎯 [Dethan 디든] ${request.jobTitle || '자소서'} AI 첨삭 완료!`;
+    const shareDesc = `🏆 종합 점수: ${result.overallScore}점 / 100점\n💡 "${result.headline}"`;
+    const shareUrl = 'https://draft-ethan.vercel.app';
 
     if (typeof window !== 'undefined' && (window as any).Kakao) {
       const kakao = (window as any).Kakao;
@@ -97,7 +97,7 @@ ${(result.interviewQuestions || []).map((iq, i) => `Q${i + 1}. ${iq.question}\n-
           content: {
             title: shareTitle,
             description: shareDesc,
-            imageUrl: `${shareUrl}/assets/og-image.png`,
+            imageUrl: 'https://draft-ethan.vercel.app/og-image.png',
             link: {
               mobileWebUrl: shareUrl,
               webUrl: shareUrl,
