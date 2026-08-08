@@ -86,7 +86,7 @@ ${(result.interviewQuestions || []).map((iq, i) => `Q${i + 1}. ${iq.question}\n-
       const kakao = (window as any).Kakao;
       if (!kakao.isInitialized()) {
         try {
-          kakao.init('18bfdf8872f2d93e1176b509ef488a03');
+          kakao.init('41eea8dec5f5c9fdd7723e9386e0aa78');
         } catch (e) {
           console.warn('Kakao init fallback:', e);
         }
