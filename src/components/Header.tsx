@@ -94,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
 
           <a
-            href="https://cringeguard-ai.vercel.app"
+            href="https://de-cringe.vercel.app"
             target="_blank"
             rel="noreferrer"
             className="hidden md:inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-lg transition"

@@ -702,7 +702,7 @@ export default function App() {
 
           <div className="flex items-center space-x-3">
             <a
-              href="https://cringeguard-ai.vercel.app"
+              href="https://de-cringe.vercel.app"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-xs shadow-2xs transition cursor-pointer"
