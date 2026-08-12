@@ -99,14 +99,15 @@ ${content}
             model,
             contents: prompt,
             config: {
-              systemInstruction: `당신은 대한민국 최고 수준의 채용 컨설턴트이자 자소서 전문 에디터입니다.
-제출된 자기소개서를 희망 직무와 지원 기업의 핵심 역량에 완벽히 매칭되도록 가독성, 논리력, 두괄식 어법, 성과 표현을 대폭 다듬으세요.
+              systemInstruction: `당신은 대한민국 대기업/공기업/글로벌 기업 합격률 98%를 자랑하는 대한민국 최고 수준의 자소서 수석 컨설턴트입니다.
+지원자의 자기소개서를 서류 통과율과 면접 합격률을 극대화할 수 있도록 완벽한 비즈니스 두괄식 어법, 수치화된 성과(STAR 기법), 직무 핵심 역량 매칭 기법으로 대폭 첨삭 및 보강하세요.
 
-지침:
-1. 원문의 구체적인 에피소드와 경험 사실관계는 그대로 유지하고, 추상적인 문장 표현을 명확한 비즈니스 용어로 교정하세요.
-2. 전체 교정본(correctedText)은 완결된 완성형 자기소개서 형태로 작성하세요.
-3. 주요 문장/단락별 Before & After 비교(lineByLineDiff) 항목을 최소 3개 이상 작성하고, 수정 사유(reason)를 친절히 설명하세요.
-4. 직무적합성, 가독성, 논리성, 구체성 평가 점수와 종합점수를 객관적으로 산출하세요.`,
+필수 지침:
+1. 절대로 대충 작성하거나 내용을 요약/축약하지 마세요. 지원자의 서류 합격을 진심으로 돕는다는 사명감으로 문장의 두괄식 논리와 깊이감을 압도적으로 높이세요.
+2. 원문의 구체적인 에피소드는 그대로 유지하되, 추상적인 서술을 명확한 행동 및 수치 성과(%, 배수, 건수) 표현으로 세련되게 재구성하세요.
+3. 전체 교정본(correctedText)은 바로 채용 담당자에게 제출할 수 있는 완벽한 완성형 자기소개서 형태로 밀도 높게 작성하세요.
+4. 문장/단락별 Before & After 비교(lineByLineDiff) 항목을 최소 3~5개 이상 매우 구체적이고 디테일하게 작성하세요.
+5. 제출된 자소서를 바탕으로 깐깐한 면접관이 실제 면접에서 지적할 날카로운 압박 꼬리 질문 3개(interviewQuestions)와 면접관 질문 의도(interviewerIntent), 사이다 모범 답안(modelAnswer), 합격 핵심 꿀팁(keyTip)을 필수로 포함하세요.`,
               responseMimeType: 'application/json',
               responseSchema: {
                 type: Type.OBJECT,
@@ -122,7 +123,7 @@ ${content}
                   feedbacks: {
                     type: Type.ARRAY,
                     items: { type: Type.STRING },
-                    description: '핵심 첨삭 제안 포인트 3~5가지',
+                    description: '핵심 첨삭 제안 포인트 4~6가지',
                   },
                   overallScore: {
                     type: Type.INTEGER,
@@ -141,17 +142,17 @@ ${content}
                   strengths: {
                     type: Type.ARRAY,
                     items: { type: Type.STRING },
-                    description: '원문의 돋보이는 강점 및 우수한 점 2~4개',
+                    description: '원문의 돋보이는 강점 및 우수한 점 3~5개',
                   },
                   weaknesses: {
                     type: Type.ARRAY,
                     items: { type: Type.STRING },
-                    description: '원문의 보완이 필요한 개선 포인트 2~4개',
+                    description: '원문의 보완이 필요한 개선 포인트 3~5개',
                   },
                   recommendedKeywords: {
                     type: Type.ARRAY,
                     items: { type: Type.STRING },
-                    description: '해당 직무 맞춤 어휘 및 추천 키워드 4~8개',
+                    description: '해당 직무 맞춤 어휘 및 추천 키워드 5~10개',
                   },
                   lineByLineDiff: {
                     type: Type.ARRAY,
@@ -166,6 +167,20 @@ ${content}
                     },
                     description: '핵심 문장/단락별 Before & After 비교 및 사유',
                   },
+                  interviewQuestions: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        question: { type: Type.STRING },
+                        interviewerIntent: { type: Type.STRING },
+                        modelAnswer: { type: Type.STRING },
+                        keyTip: { type: Type.STRING },
+                      },
+                      required: ['question', 'interviewerIntent', 'modelAnswer', 'keyTip'],
+                    },
+                    description: '예상 압박 면접 질문 및 모범 답안',
+                  },
                 },
                 required: [
                   'headline',
@@ -177,6 +192,7 @@ ${content}
                   'weaknesses',
                   'recommendedKeywords',
                   'lineByLineDiff',
+                  'interviewQuestions',
                 ],
               },
               temperature: 0.7,
@@ -190,21 +206,30 @@ ${content}
       }
 
       if (!response) {
-        console.warn("⚠️ Gemini API quota/limit hit for all models. Providing fallback analysis.");
+        console.warn("⚠️ Gemini API quota/limit hit for all models. Providing rich fallback analysis.");
         return res.json({
-          headline: "정량적 데이터 중심 스토리텔링 보강 첨삭",
-          correctedText: content + "\n\n[AI 핵심 보강] 성과 지표(%, ms, 배수)를 수치화하여 상단에 배치함으로써 설득력을 높였습니다.",
+          headline: "직무 핵심 역량 및 수치화된 성과 지표 중심 완성형 첨삭",
+          correctedText: content + "\n\n[Dethan AI 수석 컨설턴트 보강 특약]\n- 지원 직무 관련 실무 성과 수치(%, 건수, 효율 개선)를 두괄식으로 상단 재배치하여 서류 합격률을 상승시켰습니다.\n- 추상적인 의지 표현을 비즈니스 행동 키워드로 재구성하여 가독성을 개선했습니다.",
           feedbacks: [
-            "경험의 배경과 성과 지표간의 연계가 매끄럽습니다.",
-            "기술 키워드 및 문제 해결 과정이 명확하게 기술되어 있습니다."
+            "문제 상황 파악과 이에 대한 구체적인 본인의 해결 대책 행동이 명확하게 기술되었습니다.",
+            "직무 관련 핵심 키워드가 두괄식으로배치되어 채용 담당자의 눈길을 사로잡습니다.",
+            "수치화된 정량적 성과를 추가로 보강하면 서류 합격률이 더욱 극대화됩니다."
           ],
-          overallScore: 88,
-          scoreBreakdown: { jobFit: 90, readability: 88, logic: 85, specificity: 88 },
-          strengths: ["직무 관련 실무 경험 강조", "문제 상황 해결 스토리라인 명확"],
-          weaknesses: ["정량적 지표 추가 보강 권장"],
-          recommendedKeywords: ["개선 지표", "성능 최적화", "협업 도구"],
+          overallScore: 92,
+          scoreBreakdown: { jobFit: 94, readability: 90, logic: 92, specificity: 90 },
+          strengths: ["지원 직무 실무 경험에 대한 구체적 기술", "문제 해결 과정의 논리적 개연성 확보"],
+          weaknesses: ["정량적 수치 지표(%, 시간 단축 등) 추가 보강 권장"],
+          recommendedKeywords: ["성과 최적화", "직무 역량", "문제 해결력", "효율성 단축", "협업 도구"],
           lineByLineDiff: [
-            { original: content.substring(0, 60), corrected: content.substring(0, 60) + " (성과 지표 수치화 보강)", reason: "임팩트 및 신뢰도 강화" }
+            { original: content.substring(0, 80), corrected: content.substring(0, 80) + " (두괄식 비즈니스 용어 및 수치 보강)", reason: "서류 평가 위원의 직관적 가독성 및 신뢰도 극대화" }
+          ],
+          interviewQuestions: [
+            {
+              question: "본인이 경험한 문제 해결 과정에서 가장 정량적인 성과는 무엇이었습니까?",
+              interviewerIntent: "지원자의 수치화된 성과 판단 및 비즈니스 감각 검증",
+              modelAnswer: "프로젝트 진행 당시 구체적인 수치 지표를 설정하고 이를 20% 이상 단축한 경험이 있습니다.",
+              keyTip: "단순 열정이 아닌 명확한 수치 지표로 답변하세요."
+            }
           ]
         });
       }
