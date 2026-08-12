@@ -26,7 +26,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
     return type === '7days' ? 'Dethan Pro 7일 무제한 이용권' : 'Dethan Pro 30일 무제한 이용권';
   };
 
-  // 1. Log payment modal open intent
+  // 1. Log payment modal open intent (reuse existing 'opened' intent if present)
   useEffect(() => {
     if (!isOpen || !user) {
       // Clear local states on close
@@ -39,22 +39,50 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
 
     const logOpenIntent = async () => {
       try {
-        const { data, error } = await supabase
+        // First check if an 'opened' request already exists for this user
+        const { data: existing, error: queryError } = await supabase
           .from('payment_requests')
-          .insert([{
-            user_id: user.id,
-            email: user.email || `${user.id}@kakao.user`,
-            amount: getAmount(selectedProduct),
-            product: getProductName(selectedProduct),
-            status: 'opened'
-          }])
           .select('id')
-          .single();
+          .eq('user_id', user.id)
+          .eq('status', 'opened')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-        if (error) {
-          console.warn('payment_requests table log warning - Check if table exists:', error.message);
-        } else if (data) {
-          setCurrentRequestId(data.id);
+        if (queryError) {
+          console.warn('Query existing open request warning:', queryError.message);
+        }
+
+        if (existing) {
+          // Reuse existing 'opened' record and update product/amount/time
+          setCurrentRequestId(existing.id);
+          await supabase
+            .from('payment_requests')
+            .update({
+              amount: getAmount(selectedProduct),
+              product: getProductName(selectedProduct),
+              created_at: new Date().toISOString()
+            })
+            .eq('id', existing.id);
+        } else {
+          // Insert a new 'opened' record if none exists
+          const { data, error } = await supabase
+            .from('payment_requests')
+            .insert([{
+              user_id: user.id,
+              email: user.email || `${user.id}@kakao.user`,
+              amount: getAmount(selectedProduct),
+              product: getProductName(selectedProduct),
+              status: 'opened'
+            }])
+            .select('id')
+            .single();
+
+          if (error) {
+            console.warn('payment_requests table log warning - Check if table exists:', error.message);
+          } else if (data) {
+            setCurrentRequestId(data.id);
+          }
         }
       } catch (err) {
         console.warn('Silent log error:', err);
@@ -120,6 +148,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
           }]);
 
         if (error) throw error;
+      }
+
+      // Try saving depositor_name to profiles table if column exists
+      try {
+        await supabase
+          .from('profiles')
+          .update({ depositor_name: depositorName.trim() })
+          .eq('id', user.id);
+      } catch (pErr) {
+        console.warn('Skipped profiles.depositor_name update:', pErr);
       }
 
       // 3. Send real-time notification to Discord Webhook

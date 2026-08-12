@@ -83,6 +83,13 @@ export default function App() {
 
     const fetchProfile = async () => {
       try {
+        const kakaoNickname =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.user_metadata?.preferred_username ||
+          user.user_metadata?.nickname ||
+          user.user_metadata?.user_name;
+
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -93,9 +100,13 @@ export default function App() {
           // PGRST116 indicates row does not exist for new users
           if (error.code === 'PGRST116') {
             console.log('Profile mapping not found, initializing standard profile...');
+            const emailValue = kakaoNickname
+              ? `${kakaoNickname} (${user.email || `${user.id}@kakao.user`})`
+              : user.email || `${user.id}@kakao.user`;
+
             const { data: newProfile, error: insertError } = await supabase
               .from('profiles')
-              .insert([{ id: user.id, email: user.email || `${user.id}@kakao.user`, is_pro: false }])
+              .insert([{ id: user.id, email: emailValue, is_pro: false }])
               .select('*')
               .single();
 
@@ -108,6 +119,16 @@ export default function App() {
             throw error;
           }
         } else if (data) {
+          // If profile exists and user logged in with Kakao, update profiles email with Kakao nickname if not present
+          if (kakaoNickname && data.email && !data.email.includes(kakaoNickname)) {
+            const updatedEmail = `${kakaoNickname} (${data.email})`;
+            await supabase
+              .from('profiles')
+              .update({ email: updatedEmail })
+              .eq('id', user.id);
+            data.email = updatedEmail;
+          }
+
           let activePro = data.is_pro;
           let activeExp = data.pro_expires_at || null;
           if (activePro && activeExp) {
@@ -509,7 +530,18 @@ export default function App() {
 
       setResult(data);
       await saveToHistory(req, data);
-      notifyCorrectionSuccess(req.jobTitle, req.content ? req.content.length : 0);
+      const kakaoNickname =
+        user?.user_metadata?.full_name ||
+        user?.user_metadata?.name ||
+        user?.user_metadata?.preferred_username ||
+        user?.user_metadata?.nickname ||
+        user?.user_metadata?.user_name;
+
+      const userDisplay = kakaoNickname
+        ? `${kakaoNickname} (${user?.email || `${user?.id}@kakao.user`})`
+        : (user?.email || (user?.id ? `${user.id}@kakao.user` : '비회원 손님'));
+
+      notifyCorrectionSuccess(req, userDisplay, currentIsPro);
 
       // Increment limits locally if using free tier
       if (!isPro) {

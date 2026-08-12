@@ -10,6 +10,7 @@ interface AdminModalProps {
 interface UserProfile {
   id: string;
   email: string | null;
+  depositor_name?: string | null;
   is_pro: boolean;
   pro_expires_at?: string | null;
   created_at?: string;
@@ -26,10 +27,21 @@ interface PaymentRequest {
   created_at: string;
 }
 
+interface AdminHistoryItem {
+  id: string;
+  user_id: string;
+  job_title: string;
+  company_name: string | null;
+  request_data: any;
+  result_data: any;
+  created_at: string;
+}
+
 export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
-  const [activeTab, setActiveTab] = useState<'requests' | 'profiles'>('requests');
+  const [historyItems, setHistoryItems] = useState<AdminHistoryItem[]>([]);
+  const [activeTab, setActiveTab] = useState<'requests' | 'profiles' | 'history'>('requests');
   const [searchQuery, setSearchQuery] = useState('');
   
   const [isLoading, setIsLoading] = useState(false);
@@ -78,10 +90,28 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const fetchHistoryItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('history_items')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.warn('Failed to load history_items:', error.message);
+      } else {
+        setHistoryItems(data || []);
+      }
+    } catch (err: any) {
+      console.error('Failed to load history items:', err);
+    }
+  };
+
   const handleRefresh = async () => {
     setIsLoading(true);
     setErrorMsg(null);
-    await Promise.all([fetchProfiles(), fetchPaymentRequests()]);
+    await Promise.all([fetchProfiles(), fetchPaymentRequests(), fetchHistoryItems()]);
     setIsLoading(false);
   };
 
@@ -179,11 +209,26 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
 
       const expiresAt = new Date(baseTime + days * 24 * 60 * 60 * 1000).toISOString();
 
-      // 1. Upgrade profile's is_pro status to true with pro_expires_at timestamp
-      const { error: profileError } = await supabase
+      // 1. Upgrade profile's is_pro status to true with pro_expires_at timestamp (upsert guarantees creation)
+      const profileData: any = {
+        id: req.user_id,
+        email: req.email || `${req.user_id}@kakao.user`,
+        is_pro: true,
+        pro_expires_at: expiresAt
+      };
+      if (req.depositor_name) {
+        profileData.depositor_name = req.depositor_name;
+      }
+
+      let { error: profileError } = await supabase
         .from('profiles')
-        .update({ is_pro: true, pro_expires_at: expiresAt })
-        .eq('id', req.user_id);
+        .upsert(profileData);
+
+      if (profileError && profileError.message?.includes('depositor_name')) {
+        delete profileData.depositor_name;
+        const fallback = await supabase.from('profiles').upsert(profileData);
+        profileError = fallback.error;
+      }
 
       if (profileError) throw profileError;
 
@@ -245,14 +290,28 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
 
   const cleanQuery = searchQuery.replace('#', '').trim().toLowerCase();
 
-  // Filters profiles
-  const filteredProfiles = profiles.filter((p) =>
-    (p.email || '').toLowerCase().includes(cleanQuery) ||
-    (p.id || '').toLowerCase().includes(cleanQuery)
-  );
+  // Filters profiles (including matching depositor_name from payment_requests)
+  const filteredProfiles = profiles.filter((p) => {
+    const userPayment = paymentRequests.find((req) => req.user_id === p.id && req.depositor_name);
+    const depositor = userPayment?.depositor_name || '';
+    return (
+      (p.email || '').toLowerCase().includes(cleanQuery) ||
+      (p.id || '').toLowerCase().includes(cleanQuery) ||
+      depositor.toLowerCase().includes(cleanQuery)
+    );
+  });
+
+  // Deduplicate 'opened' requests so only the latest 'opened' entry per user is retained
+  const seenOpenedUserIds = new Set<string>();
+  const deduplicatedRequests = paymentRequests.filter((req) => {
+    if (req.status !== 'opened') return true;
+    if (seenOpenedUserIds.has(req.user_id)) return false;
+    seenOpenedUserIds.add(req.user_id);
+    return true;
+  });
 
   // Filters payment requests
-  const filteredRequests = paymentRequests.filter((p) =>
+  const filteredRequests = deduplicatedRequests.filter((p) =>
     (p.email || '').toLowerCase().includes(cleanQuery) ||
     (p.depositor_name || '').toLowerCase().includes(cleanQuery) ||
     (p.id || '').toLowerCase().includes(cleanQuery) ||
@@ -305,7 +364,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
             }`}
           >
-            <span>💳 입금 완료 요청 리스트</span>
+            <span>💳 입금 요청 리스트</span>
             {pendingRequestsCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white font-mono text-[9px] font-extrabold leading-none animate-pulse">
                 {pendingRequestsCount}
@@ -320,9 +379,22 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
             }`}
           >
-            <span>👥 전체 가입자 데이터베이스</span>
+            <span>👥 전체 회원</span>
             <span className="text-[10px] text-gray-400 font-mono font-medium">
-              ({profiles.length}명)
+              ({profiles.length})
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`flex-1 py-3 text-xs font-bold transition border-b-2 flex justify-center items-center gap-2 cursor-pointer ${
+              activeTab === 'history'
+                ? 'border-indigo-650 text-indigo-700 bg-white'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
+            }`}
+          >
+            <span>📝 고객 첨삭 입력 기록</span>
+            <span className="text-[10px] text-gray-400 font-mono font-medium">
+              ({historyItems.length})
             </span>
           </button>
         </div>
@@ -336,7 +408,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
               placeholder={
                 activeTab === 'requests' 
                   ? '입금자명, 이메일 주소 또는 매칭 코드 검색'
-                  : '회원 이메일 주소 또는 고유코드(#) 검색'
+                  : activeTab === 'profiles'
+                  ? '회원 이메일 주소 또는 고유코드(#) 검색'
+                  : '직무, 회사명, 자소서 본문 내용 검색'
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -344,7 +418,17 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
             />
           </div>
           <div className="text-[11px] text-gray-500 font-bold shrink-0">
-            총 {activeTab === 'requests' ? filteredRequests.length : filteredProfiles.length}건 검색됨
+            총 {
+              activeTab === 'requests' ? filteredRequests.length :
+              activeTab === 'profiles' ? filteredProfiles.length :
+              historyItems.filter(h => {
+                const req = h.request_data || {};
+                const content = req.content || '';
+                const job = h.job_title || '';
+                const company = h.company_name || '';
+                return job.toLowerCase().includes(cleanQuery) || company.toLowerCase().includes(cleanQuery) || content.toLowerCase().includes(cleanQuery);
+              }).length
+            }건 검색됨
           </div>
         </div>
 
@@ -473,7 +557,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 })}
               </div>
             )
-          ) : (
+          ) : activeTab === 'profiles' ? (
             /* TAB 2: Profiles DB */
             filteredProfiles.length === 0 ? (
               <div className="text-center py-20 text-gray-400 text-xs">
@@ -484,6 +568,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 {filteredProfiles.map((profile) => {
                   const isProAcc = profile.is_pro;
                   const isUpdating = actionLoadingId === profile.id;
+                  const userPayment = paymentRequests.find((req) => req.user_id === profile.id && req.depositor_name);
+                  const depositorName = userPayment?.depositor_name;
                   
                   return (
                     <div
@@ -491,7 +577,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                       className="flex justify-between items-center p-3 rounded-xl border border-gray-100 hover:bg-gray-50/70 transition"
                     >
                       <div className="space-y-1 flex-1 min-w-0 pr-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {depositorName && (
+                            <span className="text-xs font-extrabold text-indigo-950 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md shrink-0">
+                              👤 {depositorName}
+                            </span>
+                          )}
                           <span className="text-xs font-bold text-gray-800 break-all select-all truncate">
                             {profile.email || '이메일 없음'}
                           </span>
@@ -545,6 +636,110 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                     </div>
                   );
                 })}
+              </div>
+            )
+          ) : (
+            /* TAB 3: CUSTOMER SUBMISSIONS HISTORY */
+            historyItems.filter((item) => {
+              const req = item.request_data || {};
+              const content = req.content || '';
+              const job = item.job_title || '';
+              const company = item.company_name || '';
+              const userId = item.user_id || '';
+              return (
+                job.toLowerCase().includes(cleanQuery) ||
+                company.toLowerCase().includes(cleanQuery) ||
+                content.toLowerCase().includes(cleanQuery) ||
+                userId.toLowerCase().includes(cleanQuery)
+              );
+            }).length === 0 ? (
+              <div className="py-12 text-center text-xs text-gray-400 font-medium">
+                고객이 제출한 첨삭 입력 기록이 없습니다.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {historyItems
+                  .filter((item) => {
+                    const req = item.request_data || {};
+                    const content = req.content || '';
+                    const job = item.job_title || '';
+                    const company = item.company_name || '';
+                    const userId = item.user_id || '';
+                    return (
+                      job.toLowerCase().includes(cleanQuery) ||
+                      company.toLowerCase().includes(cleanQuery) ||
+                      content.toLowerCase().includes(cleanQuery) ||
+                      userId.toLowerCase().includes(cleanQuery)
+                    );
+                  })
+                  .map((item) => {
+                    const req = item.request_data || {};
+                    const res = item.result_data || {};
+                    const formattedDate = new Date(item.created_at).toLocaleString('ko-KR', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    });
+
+                    // match user profile
+                    const matchingProfile = profiles.find((p) => p.id === item.user_id);
+                    const userDisplay = matchingProfile?.email || `유저ID: ${item.user_id.slice(0, 8)}`;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="p-3.5 rounded-xl border border-gray-200 bg-white hover:shadow-sm transition space-y-2"
+                      >
+                        <div className="flex justify-between items-start flex-wrap gap-2 border-b border-gray-100 pb-2">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-extrabold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                🎯 {item.job_title || '미지정 직무'}
+                              </span>
+                              {item.company_name && (
+                                <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+                                  🏢 {item.company_name}
+                                </span>
+                              )}
+                              <span className="text-[10px] font-medium text-gray-500">
+                                👤 {userDisplay}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-gray-400 font-mono">
+                            ⏰ {formattedDate}
+                          </div>
+                        </div>
+
+                        {req.question && (
+                          <div className="text-xs font-bold text-gray-800 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                            ❓ [문항] {req.question}
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <div className="text-[11px] font-bold text-gray-500 flex justify-between">
+                            <span>📄 고객 제출 자소서 원문 ({req.content?.length || 0}자)</span>
+                            {res.overallScore && (
+                              <span className="text-emerald-600 font-bold">
+                                AI 평가 점수: {res.overallScore}점
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 max-h-40 overflow-y-auto whitespace-pre-wrap font-sans leading-relaxed">
+                            {req.content || '본문 없음'}
+                          </div>
+                        </div>
+
+                        {res.headline && (
+                          <div className="text-[11px] text-indigo-700 bg-indigo-50/50 p-2 rounded-lg border border-indigo-100 font-medium">
+                            ✨ <b>AI 헤드라인:</b> {res.headline}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             )
           )}

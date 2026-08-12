@@ -51,7 +51,10 @@ export const InstantRoaster: React.FC<InstantRoasterProps> = ({ onStartFullAnaly
 
     const shareTitle = `🔥 [Dethan 디든] 자소서 팩폭 점수 ${roastResult.score}점!`;
     const shareDesc = `👿 팩폭: "${roastResult.roast}"\n✨ AI 합격 추천 문장 확인하기`;
-    const shareUrl = 'https://draft-ethan.vercel.app';
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://draft-ethan.vercel.app';
+    const shareUrl = currentOrigin.includes('localhost') || currentOrigin.includes('vercel.app') 
+      ? currentOrigin 
+      : 'https://draft-ethan.vercel.app';
 
     if (typeof window !== 'undefined' && (window as any).Kakao) {
       const kakao = (window as any).Kakao;

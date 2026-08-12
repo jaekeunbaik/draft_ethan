@@ -79,7 +79,7 @@ ${question || '자유 지원 항목'}
 ${content}
 `;
 
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite'];
     let response: any = null;
     let lastError: any = null;
 
@@ -174,11 +174,11 @@ ${content}
         headline: "정량적 데이터 중심 스토리텔링 보강 첨삭",
         correctedText: content + "\n\n[AI 핵심 보강] 성과 지표(%, ms, 배수)를 수치화하여 상단에 배치함으로써 설득력을 높였습니다.",
         feedbacks: [
-          { category: "구조성", comment: "경험의 배경과 성과 지표간의 연계가 매끄럽습니다." },
-          { category: "전문성", comment: "기술 키워드 및 문제 해결 과정이 명확하게 기술되어 있습니다." }
+          "경험의 배경과 성과 지표간의 연계가 매끄럽습니다.",
+          "기술 키워드 및 문제 해결 과정이 명확하게 기술되어 있습니다."
         ],
         overallScore: 88,
-        scoreBreakdown: { clarity: 90, impact: 85, relevancy: 88, structure: 90 },
+        scoreBreakdown: { jobFit: 90, readability: 88, logic: 85, specificity: 88 },
         strengths: ["직무 관련 실무 경험 강조", "문제 상황 해결 스토리라인 명확"],
         weaknesses: ["정량적 지표 추가 보강 권장"],
         recommendedKeywords: ["개선 지표", "성능 최적화", "협업 도구"],
@@ -238,32 +238,33 @@ ${content}
 app.post('/api/notify-deposit', async (req, res) => {
   try {
     const { depositorName, amount, product, email } = req.body;
-    const discordWebhookUrl =
-      process.env.DISCORD_WEBHOOK_URL ||
-      'https://discord.com/api/webhooks/1533471768809836638/Xs8S5bFfdT_8dVwguB8qSmyjaehnQ81wXuaKvUum_K4mUo3CcF_5NRMdPTXBfBFBZRgx';
+    const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
-    if (discordWebhookUrl) {
-      await fetch(discordWebhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          embeds: [
-            {
-              title: '🔔 [Dethan 디든] 새로운 무통장 입금 확인 요청!',
-              color: 0x5865f2,
-              fields: [
-                { name: '👤 입금자 성함', value: depositorName || '미입력', inline: true },
-                { name: '💰 입금 금액', value: `${Number(amount).toLocaleString()}원`, inline: true },
-                { name: '📦 신청 상품', value: product || '무제한 이용권', inline: false },
-                { name: '📧 신청자 이메일/ID', value: email || '미입력', inline: false },
-              ],
-              timestamp: new Date().toISOString(),
-              footer: { text: 'Dethan Pro 입금 알림' },
-            },
-          ],
-        }),
-      });
+    if (!discordWebhookUrl) {
+      console.warn('DISCORD_WEBHOOK_URL is not configured.');
+      return res.json({ success: true, message: 'Webhook URL not set' });
     }
+
+    await fetch(discordWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [
+          {
+            title: '🔔 [Dethan 디든] 새로운 무통장 입금 확인 요청!',
+            color: 0x5865f2,
+            fields: [
+              { name: '👤 입금자 성함', value: depositorName || '미입력', inline: true },
+              { name: '💰 입금 금액', value: `${Number(amount).toLocaleString()}원`, inline: true },
+              { name: '📦 신청 상품', value: product || '무제한 이용권', inline: false },
+              { name: '📧 신청자 이메일/ID', value: email || '미입력', inline: false },
+            ],
+            timestamp: new Date().toISOString(),
+            footer: { text: 'Dethan Pro 입금 알림' },
+          },
+        ],
+      }),
+    });
 
     return res.json({ success: true });
   } catch (error: any) {

@@ -6,8 +6,7 @@
 const getWebhookUrl = (): string | undefined => {
   return (
     import.meta.env.VITE_DISCORD_WEBHOOK_URL ||
-    (typeof process !== 'undefined' ? process.env.VITE_DISCORD_WEBHOOK_URL || process.env.NEXT_PUBLIC_DISCORD_WEBHOOK_URL : undefined) ||
-    'https://discord.com/api/webhooks/1533471768809836638/Xs8S5bFfdT_8dVwguB8qSmyjaehnQ81wXuaKvUum_K4mUo3CcF_5NRMdPTXBfBFBZRgx'
+    (typeof process !== 'undefined' ? process.env.VITE_DISCORD_WEBHOOK_URL || process.env.NEXT_PUBLIC_DISCORD_WEBHOOK_URL : undefined)
   );
 };
 
@@ -94,21 +93,74 @@ export const notifyVisitor = async (): Promise<boolean> => {
 };
 
 /**
- * 2. notifyCorrectionSuccess(): 자소서 첨삭 완료 시 알림 (지원 직무, 글자 수 포함)
+ * 2. notifyCorrectionSuccess(): 자소서 첨삭 완료 시 알림 (유저 정보, 지원 회사, 문항, 원문 전체/미리보기 포함)
  */
 export const notifyCorrectionSuccess = async (
-  jobTitle: string,
-  charCount: number
+  req: {
+    question?: string;
+    content: string;
+    jobTitle: string;
+    companyName?: string;
+    tone?: string;
+    focusPoints?: string[];
+  },
+  userEmail?: string,
+  isPro?: boolean
 ): Promise<boolean> => {
+  const charCount = req.content ? req.content.length : 0;
+  const userTag = userEmail ? `${userEmail} (${isPro ? '👑 PRO 회원' : '👤 일반 회원'})` : '비회원 / 손님';
+
+  const toneMap: Record<string, string> = {
+    professional: '전문적인 비즈니스 어체',
+    confident: '당당하고 적극적인 어체',
+    modest: '겸손하고 진솔한 어체',
+    logical: '논리적인 분석적 어체',
+  };
+
+  const focusMap: Record<string, string> = {
+    metrics: '숫자/수치 성과',
+    job_skills: '직무 전문 역량',
+    teamwork: '팀워크/협업',
+    problem_solving: '문제 해결력',
+  };
+
+  const selectedTone = req.tone ? (toneMap[req.tone] || req.tone) : '기본 어체';
+  const selectedFocus = req.focusPoints && req.focusPoints.length > 0
+    ? req.focusPoints.map(f => focusMap[f] || f).join(', ')
+    : '기본 설정';
+
+  const contentSnippet = req.content.length > 900
+    ? req.content.substring(0, 900) + '\n... (이하 생략)'
+    : req.content;
+
+  const fields = [
+    { name: '👤 제출 유저', value: userTag, inline: false },
+    { name: '🎯 지원 직무 / 회사', value: `${req.jobTitle} ${req.companyName ? `(${req.companyName})` : ''}`, inline: true },
+    { name: '📝 자소서 글자 수', value: `${charCount.toLocaleString()}자`, inline: true },
+    { name: '⚙️ 첨삭 선택 옵션', value: `톤: ${selectedTone} | 강조: ${selectedFocus}`, inline: false },
+  ];
+
+  if (req.question && req.question.trim()) {
+    fields.push({ name: '❓ 자소서 문항', value: req.question.substring(0, 300), inline: false });
+  }
+
+  fields.push({
+    name: '📄 고객이 입력한 자소서 원문',
+    value: `\`\`\`\n${contentSnippet}\n\`\`\``,
+    inline: false,
+  });
+
+  fields.push({
+    name: '⏰ 첨삭 시각',
+    value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+    inline: false,
+  });
+
   return sendDiscordEmbed({
-    title: '✨ [Dethan 디든] 자소서 AI 첨삭 완료!',
-    color: 0x2ecc71, // Emerald Green
-    fields: [
-      { name: '🎯 지원 직무', value: jobTitle || '미지정', inline: true },
-      { name: '📝 자소서 글자 수', value: `${charCount.toLocaleString()}자`, inline: true },
-      { name: '⏰ 첨삭 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
-    ],
-    footerText: 'Dethan (디든) AI 첨삭 모니터링',
+    title: '✨ [Dethan 디든] 새로운 자소서 AI 첨삭 발생!',
+    color: isPro ? 0xf1c40f : 0x2ecc71, // Gold if Pro, Emerald Green if Free
+    fields,
+    footerText: 'Dethan (디든) AI 실시간 자소서 첨삭 모니터링',
   });
 };
 
