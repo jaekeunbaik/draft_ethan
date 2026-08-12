@@ -12,6 +12,7 @@ interface HeaderProps {
   onSignOut: () => void;
   onOpenPayment?: () => void;
   onOpenAdmin?: () => void;
+  onOpenCoffee?: () => void;
   isAdmin?: boolean;
 }
 
@@ -26,6 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSignOut,
   onOpenPayment,
   onOpenAdmin,
+  onOpenCoffee,
   isAdmin = false,
 }) => {
   const [logoClicks, setLogoClicks] = useState(0);
@@ -102,6 +104,16 @@ export const Header: React.FC<HeaderProps> = ({
           >
             🔥 DeCringe AI
           </a>
+
+          {onOpenCoffee && (
+            <button
+              onClick={onOpenCoffee}
+              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-900 bg-amber-100/90 hover:bg-amber-200 border border-amber-300 px-2.5 py-1 rounded-lg transition shadow-xs cursor-pointer animate-pulse"
+              title="서류/면접 합격하면 커피 한 잔 쏘기!"
+            >
+              ☕ 합격 턱 쏘기
+            </button>
+          )}
           
           <button
             onClick={onOpenHelp}

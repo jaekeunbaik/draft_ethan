@@ -46,21 +46,20 @@ app.post('/api/correct', async (req, res) => {
     const ai = getAiClient();
 
     const toneGuide = tone ? `
-[요청 첨삭 톤/어조]: ${
-  tone === 'professional' ? '전문적이고 신뢰감을 주는 비즈니스 어체' :
-  tone === 'confident' ? '당당하고 적극적인 주도적 어체' :
-  tone === 'modest' ? '겸손하면서도 진솔하고 개방적인 어체' :
-  '논리적이고 명확한 분석적 어체'
-}` : '';
+[요청 첨삭 톤/어조]: ${tone === 'professional' ? '전문적이고 신뢰감을 주는 비즈니스 어체' :
+        tone === 'confident' ? '당당하고 적극적인 주도적 어체' :
+          tone === 'modest' ? '겸손하면서도 진솔하고 개방적인 어체' :
+            '논리적이고 명확한 분석적 어체'
+      }` : '';
 
     const focusGuide = focusPoints && focusPoints.length > 0 ? `
 [중점 강조 포인트]: ${focusPoints.map((f: string) => {
-  if (f === 'metrics') return '숫자 및 수치화된 성과';
-  if (f === 'job_skills') return '직무 전문 역량 및 실무 도구';
-  if (f === 'teamwork') return '소통 및 조직 협업 능력';
-  if (f === 'problem_solving') return '논리적 문제 해결 과정';
-  return f;
-}).join(', ')}` : '';
+      if (f === 'metrics') return '숫자 및 수치화된 성과';
+      if (f === 'job_skills') return '직무 전문 역량 및 실무 도구';
+      if (f === 'teamwork') return '소통 및 조직 협업 능력';
+      if (f === 'problem_solving') return '논리적 문제 해결 과정';
+      return f;
+    }).join(', ')}` : '';
 
     const lengthGuide = targetCharCount ? `
 [목표 글자수]: 공백 포함 약 ${targetCharCount}자 내외로 맞춰주세요.` : '';

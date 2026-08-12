@@ -8,6 +8,7 @@ import { HelpGuideModal } from './components/HelpGuideModal';
 import { AuthModal } from './components/AuthModal';
 import { PaymentModal } from './components/PaymentModal';
 import { AdminModal } from './components/AdminModal';
+import { CoffeeModal } from './components/CoffeeModal';
 import { TermsModal } from './components/TermsModal';
 import { CorrectionRequest, CorrectionResponse, HistoryItem } from './types';
 import { AlertCircle, ArrowUp, Instagram, ShieldCheck } from 'lucide-react';
@@ -50,10 +51,11 @@ export default function App() {
   const [user, setUser] = useState<any | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
-  // Pro & Payment State
+  // Pro & Payment & Coffee Support State
   const [isPro, setIsPro] = useState(false);
   const [proExpiresAt, setProExpiresAt] = useState<string | null>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [isCoffeeOpen, setIsCoffeeOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -588,6 +590,7 @@ export default function App() {
         onOpenAuth={() => setIsAuthOpen(true)}
         onSignOut={handleSignOut}
         onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenCoffee={() => setIsCoffeeOpen(true)}
         isAdmin={isAdmin}
         onOpenPayment={() => {
           if (!user) {
@@ -807,6 +810,13 @@ export default function App() {
         onClose={() => setIsTermsOpen(false)}
       />
 
+      {/* Coffee Support Modal */}
+      <CoffeeModal
+        isOpen={isCoffeeOpen}
+        onClose={() => setIsCoffeeOpen(false)}
+        user={user}
+      />
+
       {/* Admin Panel Modal */}
       {isAdmin && (
         <AdminModal
@@ -814,6 +824,18 @@ export default function App() {
           onClose={() => setIsAdminOpen(false)}
         />
       )}
+
+      {/* Floating Buy Me a Coffee Widget Button */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={() => setIsCoffeeOpen(true)}
+          className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-700 text-white font-extrabold text-xs rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 group border-2 border-amber-300/40 cursor-pointer"
+          title="서류/면접 합격하면 개발자에게 커피 한 잔 쏘기!"
+        >
+          <span className="text-base group-hover:rotate-12 transition-transform">☕</span>
+          <span className="tracking-tight">합격하면 커피 쏘기!</span>
+        </button>
+      </div>
     </div>
   );
 }
