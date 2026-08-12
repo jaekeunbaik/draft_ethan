@@ -337,24 +337,21 @@ export default function App() {
       console.error('Failed to save to localStorage:', e);
     }
 
-    // Supabase Sync (only if user is logged in)
-    if (user) {
-      try {
-        const { error } = await supabase.from('history_items').insert([
-          {
-            id,
-            created_at: createdAt,
-            job_title: req.jobTitle,
-            company_name: req.companyName || null,
-            request_data: req,
-            result_data: res,
-            user_id: user.id,
-          },
-        ]);
-        if (error) throw error;
-      } catch (e) {
-        console.error('Failed to save history to Supabase:', e);
-      }
+    // Supabase Sync (save both logged-in users and guest submissions to history_items)
+    try {
+      await supabase.from('history_items').insert([
+        {
+          id,
+          created_at: createdAt,
+          job_title: req.jobTitle,
+          company_name: req.companyName || null,
+          request_data: req,
+          result_data: res,
+          user_id: user?.id || null,
+        },
+      ]);
+    } catch (e) {
+      console.error('Failed to save history to Supabase:', e);
     }
   };
 

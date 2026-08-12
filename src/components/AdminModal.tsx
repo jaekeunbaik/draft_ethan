@@ -653,8 +653,23 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 userId.toLowerCase().includes(cleanQuery)
               );
             }).length === 0 ? (
-              <div className="py-12 text-center text-xs text-gray-400 font-medium">
-                고객이 제출한 첨삭 입력 기록이 없습니다.
+              <div className="py-12 text-center text-xs text-gray-500 font-medium space-y-2 bg-gray-50/50 rounded-xl border border-dashed border-gray-200 p-6">
+                <p className="font-bold text-gray-700">고객이 제출한 첨삭 입력 기록이 존재하지 않거나 DB 테이블 생성이 필요합니다.</p>
+                <p className="text-[11px] text-gray-400">
+                  고객이 새로운 자소서 첨삭을 제출하면 이곳에 원문 전체와 AI 평가 결과가 실시간으로 기록됩니다.
+                </p>
+                <div className="text-[10px] bg-slate-800 text-slate-200 p-3 rounded-lg text-left font-mono max-w-md mx-auto overflow-x-auto select-all">
+                  -- history_items 테이블 생성 SQL (Supabase SQL Editor에서 실행)<br />
+                  CREATE TABLE IF NOT EXISTS history_items (<br />
+                  &nbsp;&nbsp;id text PRIMARY KEY,<br />
+                  &nbsp;&nbsp;user_id uuid,<br />
+                  &nbsp;&nbsp;job_title text,<br />
+                  &nbsp;&nbsp;company_name text,<br />
+                  &nbsp;&nbsp;request_data jsonb,<br />
+                  &nbsp;&nbsp;result_data jsonb,<br />
+                  &nbsp;&nbsp;created_at timestamptz DEFAULT now()<br />
+                  );
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
