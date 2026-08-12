@@ -70,10 +70,18 @@ const sendDiscordEmbed = async (options: SendDiscordEmbedOptions): Promise<boole
   }
 };
 
+let lastVisitorNotifyTime = 0;
+
 /**
  * 1. notifyVisitor(): 유저 방문 시 알림 (타임스탬프 및 접속 디바이스/브라우저 정보 포함)
  */
 export const notifyVisitor = async (): Promise<boolean> => {
+  const now = Date.now();
+  // React 18 StrictMode 이중 마운트 및 짧은 시간 내 중복 접속 알림 방지 (10초 쿨다운)
+  if (now - lastVisitorNotifyTime < 10000) {
+    return false;
+  }
+  lastVisitorNotifyTime = now;
   const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
   const referrer = typeof document !== 'undefined' ? (document.referrer || 'Direct Access / Bookmark') : 'Direct Access';
 
