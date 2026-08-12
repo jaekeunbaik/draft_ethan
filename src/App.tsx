@@ -825,8 +825,8 @@ export default function App() {
         />
       )}
 
-      {/* Floating Buy Me a Coffee Widget Button */}
-      <div className="fixed bottom-6 right-6 z-40">
+      {/* Floating Buy Me a Coffee Widget Button (Bottom-Left) */}
+      <div className="fixed bottom-6 left-6 z-40">
         <button
           onClick={() => setIsCoffeeOpen(true)}
           className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-700 text-white font-extrabold text-xs rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 group border-2 border-amber-300/40 cursor-pointer"
