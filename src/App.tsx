@@ -119,14 +119,28 @@ export default function App() {
             throw error;
           }
         } else if (data) {
-          // If profile exists and user logged in with Kakao, update profiles email with Kakao nickname if not present
+          // If profile exists and user logged in with Kakao, sync nickname & email
+          const updateData: any = {};
+          if (kakaoNickname && !data.nickname) {
+            updateData.nickname = kakaoNickname;
+          }
           if (kakaoNickname && data.email && !data.email.includes(kakaoNickname)) {
-            const updatedEmail = `${kakaoNickname} (${data.email})`;
-            await supabase
+            updateData.email = `${kakaoNickname} (${data.email})`;
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            let { error: updErr } = await supabase
               .from('profiles')
-              .update({ email: updatedEmail })
+              .update(updateData)
               .eq('id', user.id);
-            data.email = updatedEmail;
+
+            if (updErr && updErr.message?.includes('nickname')) {
+              delete updateData.nickname;
+              if (Object.keys(updateData).length > 0) {
+                await supabase.from('profiles').update(updateData).eq('id', user.id);
+              }
+            }
+            if (updateData.email) data.email = updateData.email;
           }
 
           let activePro = data.is_pro;

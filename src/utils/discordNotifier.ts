@@ -10,18 +10,27 @@ const getWebhookUrl = (): string | undefined => {
   );
 };
 
+const getDepositWebhookUrl = (): string | undefined => {
+  return (
+    import.meta.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL ||
+    (typeof process !== 'undefined' ? process.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL || process.env.DISCORD_DEPOSIT_WEBHOOK_URL : undefined) ||
+    getWebhookUrl()
+  );
+};
+
 interface SendDiscordEmbedOptions {
   title: string;
   description?: string;
   color: number;
   fields?: Array<{ name: string; value: string; inline?: boolean }>;
   footerText?: string;
+  webhookUrl?: string;
 }
 
 const sendDiscordEmbed = async (options: SendDiscordEmbedOptions): Promise<boolean> => {
-  const webhookUrl = getWebhookUrl();
+  const webhookUrl = options.webhookUrl || getWebhookUrl();
   if (!webhookUrl) {
-    console.warn('⚠️ VITE_DISCORD_WEBHOOK_URL이 환경변수에 설정되어 있지 않습니다.');
+    console.warn('⚠️ DISCORD_WEBHOOK_URL이 환경변수에 설정되어 있지 않습니다.');
     return false;
   }
 
@@ -180,5 +189,6 @@ export const notifyPaymentSuccess = async (
       { name: '🕒 결제 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
     ],
     footerText: 'Dethan Pro 입금/결제 알림',
+    webhookUrl: getDepositWebhookUrl(),
   });
 };
