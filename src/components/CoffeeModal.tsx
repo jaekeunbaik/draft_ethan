@@ -35,7 +35,7 @@ export const CoffeeModal: React.FC<CoffeeModalProps> = ({ isOpen, onClose }) => 
             ☕ Buy a Coffee for Ethan (합격 턱 쏘기)
           </h3>
           <p className="text-xs text-amber-100 mt-1 leading-relaxed">
-            Dethan(디든) AI로 합격하셨나요? 개발자 에탄에게 시원한 커피를 선물해 보세요!
+            Dethan(디든) AI로 합격하셨나요? 개발자 이든(Ethan)에게 시원한 커피를 선물해 보세요!
           </p>
 
           {/* Sub-tabs */}
