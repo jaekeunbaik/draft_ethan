@@ -10,6 +10,7 @@ import { PaymentModal } from './components/PaymentModal';
 import { AdminModal } from './components/AdminModal';
 import { CoffeeModal } from './components/CoffeeModal';
 import { TermsModal } from './components/TermsModal';
+import { LoadingOverlay } from './components/LoadingOverlay';
 import { CorrectionRequest, CorrectionResponse, HistoryItem } from './types';
 import { AlertCircle, ArrowUp, Instagram, ShieldCheck } from 'lucide-react';
 import { supabase } from './lib/supabase';
@@ -341,17 +342,19 @@ export default function App() {
 
     // Supabase Sync (save both logged-in users and guest submissions to history_items)
     try {
-      await supabase.from('history_items').insert([
-        {
-          id,
-          created_at: createdAt,
-          job_title: req.jobTitle,
-          company_name: req.companyName || null,
-          request_data: req,
-          result_data: res,
-          user_id: user?.id || null,
-        },
-      ]);
+      const validDbId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined;
+      const historyPayload: any = {
+        created_at: createdAt,
+        job_title: req.jobTitle,
+        company_name: req.companyName || null,
+        request_data: req,
+        result_data: res,
+      };
+
+      if (validDbId) historyPayload.id = validDbId;
+      if (user?.id) historyPayload.user_id = user.id;
+
+      await supabase.from('history_items').insert([historyPayload]);
     } catch (e) {
       console.error('Failed to save history to Supabase:', e);
     }
@@ -836,6 +839,9 @@ export default function App() {
           <span className="tracking-tight">합격하면 커피 쏘기!</span>
         </button>
       </div>
+
+      {/* Full-Screen Eye-Catching Loading Progress Overlay */}
+      <LoadingOverlay isLoading={isLoading} jobTitle={request?.jobTitle} />
     </div>
   );
 }
