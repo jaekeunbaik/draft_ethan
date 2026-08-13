@@ -11,6 +11,7 @@ import { AdminModal } from './components/AdminModal';
 import { CoffeeModal } from './components/CoffeeModal';
 import { TermsModal } from './components/TermsModal';
 import { LoadingOverlay } from './components/LoadingOverlay';
+import { ContentGuideSection } from './components/ContentGuideSection';
 import { CorrectionRequest, CorrectionResponse, HistoryItem } from './types';
 import { AlertCircle, ArrowUp, Instagram, ShieldCheck } from 'lucide-react';
 import { supabase } from './lib/supabase';
@@ -723,6 +724,9 @@ export default function App() {
             }}
           />
         )}
+
+        {/* 자소서 가이드 콘텐츠 — AdSense 정책 준수 및 SEO 강화 */}
+        <ContentGuideSection />
       </main>
 
       {/* Floating Scroll to Top button */}
