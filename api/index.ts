@@ -223,6 +223,30 @@ ${content}
       console.warn('Logging to usage_logs failed:', logErr);
     }
 
+    // history_items 서버사이드 저장 (서비스 키 → RLS 우회, 데이터 유실 방지)
+    try {
+      const supabaseClient = getSupabaseClient();
+      const { userId } = req.body;
+      const historyId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const historyPayload: any = {
+        id: historyId,
+        job_title: jobTitle,
+        company_name: companyName || null,
+        request_data: { question, content, jobTitle, companyName, tone, focusPoints, targetCharCount },
+        result_data: parsedResult,
+      };
+      if (userId) historyPayload.user_id = userId;
+
+      const { error: histErr } = await supabaseClient.from('history_items').insert([historyPayload]);
+      if (histErr) {
+        console.warn('history_items insert failed:', histErr.message);
+      } else {
+        console.log('history_items saved:', historyId);
+      }
+    } catch (histErr) {
+      console.warn('history_items insert exception:', histErr);
+    }
+
     return res.json(parsedResult);
   } catch (error: any) {
     console.error('Gemini API Correction Error:', error);
