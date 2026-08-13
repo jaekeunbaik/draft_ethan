@@ -63,7 +63,7 @@ CREATE POLICY "Admins can update all profiles"
 -- 2. Create HISTORY_ITEMS table
 CREATE TABLE IF NOT EXISTS public.history_items (
     id TEXT PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,  -- NULL 허용: 게스트 제출 지원
     job_title TEXT NOT NULL,
     company_name TEXT,
     request_data JSONB NOT NULL,
@@ -79,11 +79,24 @@ CREATE INDEX IF NOT EXISTS idx_history_items_user_created
 ALTER TABLE public.history_items ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can manage their own history items" ON public.history_items;
+DROP POLICY IF EXISTS "Admins can manage all history items" ON public.history_items;
+DROP POLICY IF EXISTS "Allow guest insert to history items" ON public.history_items;
 
+-- 본인 기록 CRUD
 CREATE POLICY "Users can manage their own history items"
     ON public.history_items FOR ALL
     USING (auth.uid() = user_id)
     WITH CHECK (auth.uid() = user_id);
+
+-- 어드민 전체 조회/관리 (이 정책이 없으면 어드민도 본인 기록만 조회됨)
+CREATE POLICY "Admins can manage all history items"
+    ON public.history_items FOR ALL
+    USING (public.is_admin());
+
+-- 게스트(비로그인) 제출 허용
+CREATE POLICY "Allow guest insert to history items"
+    ON public.history_items FOR INSERT
+    WITH CHECK (user_id IS NULL);
 
 
 -- 3. Create PAYMENT_REQUESTS table
