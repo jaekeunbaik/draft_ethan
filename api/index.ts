@@ -2,45 +2,148 @@ import express from 'express';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
 const app = express();
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '1mb' })); // 10mb → 1mb로 축소 (불필요한 대용량 방지)
 
+// ─── CORS 명시적 허용 ─────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://draft-ethan.vercel.app',
+];
+app.use((req, res, next) => {
+  const origin = req.headers.origin || '';
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
+// ─── Rate Limiting ──────────────────────────────────────────────────────────
+const correctLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1분
+  max: 8,             // IP당 분당 8회
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+});
+
+const notifyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+});
+
+// ─── Supabase (Service Role — RLS 우회 가능) ──────────────────────────────────
 const getSupabaseClient = () => {
   const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
   return createClient(supabaseUrl, supabaseKey);
 };
 
+// ─── Gemini AI Client ─────────────────────────────────────────────────────────
 const getAiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
     const envKeys = Object.keys(process.env).filter(k => k.toUpperCase().includes('GEMINI') || k.toUpperCase().includes('KEY') || k.startsWith('VITE_'));
-    console.error('Available ENV keys:', envKeys);
-    throw new Error(`GEMINI_API_KEY 환경변수가 설정되지 않았습니다. (감지된 관련 변수: ${envKeys.join(', ') || '없음'}). Vercel 대시보드에서 Redeploy(재배포)를 진행해 주세요.`);
+    throw new Error(`GEMINI_API_KEY 환경변수가 설정되지 않았습니다. (감지된 관련 변수: ${envKeys.join(', ') || '없음'})`);
   }
   return new GoogleGenAI({
     apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
+    httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
   });
 };
 
-app.post('/api/correct', async (req, res) => {
+// ─── [P0-FIX] 서버 사이드 PRO 검증 헬퍼 ──────────────────────────────────────
+// isPro를 클라이언트에서 받지 않고, userId로 DB에서 직접 조회합니다.
+const verifyUserIsPro = async (userId: string): Promise<boolean> => {
+  if (!userId) return false;
   try {
-    const { question, content, jobTitle, companyName, tone, focusPoints, targetCharCount, isPro } = req.body;
+    const supabaseClient = getSupabaseClient();
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('is_pro, pro_expires_at')
+      .eq('id', userId)
+      .single();
 
+    if (!profile?.is_pro) return false;
+    // 만료일이 없는 경우 → 영구 PRO
+    if (!profile.pro_expires_at) return true;
+    // 만료일 체크
+    return new Date(profile.pro_expires_at) > new Date();
+  } catch (err) {
+    console.warn('[verifyUserIsPro] DB lookup failed, defaulting to free:', err);
+    return false;
+  }
+};
+
+// ─── POST /api/correct ────────────────────────────────────────────────────────
+app.post('/api/correct', correctLimiter, async (req, res) => {
+  try {
+    // [P0-FIX] isPro는 클라이언트 바디에서 절대 받지 않음.
+    const { question, content, jobTitle, companyName, tone, focusPoints, targetCharCount, userId } = req.body;
+
+    // ── 입력 유효성 검증 ──
     if (!content || !content.trim()) {
       return res.status(400).json({ error: '자소서 내용을 입력해 주세요.' });
     }
-
     if (!jobTitle || !jobTitle.trim()) {
       return res.status(400).json({ error: '희망 직무를 입력해 주세요.' });
+    }
+    // 입력길이 서버사이드 제한 (5,000자)
+    if (content.length > 5000) {
+      return res.status(400).json({ error: '자소서 내용이 너무 깁니다. 5,000자 이내로 입력해주세요.' });
+    }
+
+    // [P0-FIX] 서버에서 직접 DB로 PRO 여부 검증
+    const verifiedIsPro = await verifyUserIsPro(userId || '');
+
+    // ── 무료 사용 한도 서버사이드 검증 ──
+    if (!verifiedIsPro && userId) {
+      const supabaseClient = getSupabaseClient();
+      const now = new Date();
+      const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const kstCutoff = new Date(kstNow);
+      kstCutoff.setUTCHours(6, 0, 0, 0);
+      if (kstNow.getUTCHours() < 6) {
+        kstCutoff.setUTCDate(kstCutoff.getUTCDate() - 1);
+      }
+      const utcCutoff = new Date(kstCutoff.getTime() - 9 * 60 * 60 * 1000);
+
+      // free_usage_reset_at 반영
+      const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('free_usage_reset_at')
+        .eq('id', userId)
+        .single();
+
+      let finalCutoff = utcCutoff;
+      if (profile?.free_usage_reset_at) {
+        const resetTime = new Date(profile.free_usage_reset_at);
+        if (resetTime > utcCutoff) finalCutoff = resetTime;
+      }
+
+      const { count } = await supabaseClient
+        .from('history_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', finalCutoff.toISOString());
+
+      if (count !== null && count >= 3) {
+        return res.status(429).json({
+          error: '일일 무료 AI 첨삭 한도(3회)를 모두 소진하셨습니다. PRO로 업그레이드하면 무제한 첨삭이 가능합니다.',
+          limitExceeded: true,
+        });
+      }
     }
 
     const ai = getAiClient();
@@ -168,25 +271,25 @@ ${content}
     }
 
     if (!response) {
-      console.warn("⚠️ Gemini API quota/limit hit for all models. Providing fallback analysis.");
+      console.warn('⚠️ Gemini API quota/limit hit for all models. Providing fallback analysis.');
       return res.json({
-        headline: "정량적 데이터 중심 스토리텔링 보강 첨삭",
-        correctedText: content + "\n\n[AI 핵심 보강] 성과 지표(%, ms, 배수)를 수치화하여 상단에 배치함으로써 설득력을 높였습니다.",
+        headline: '정량적 데이터 중심 스토리텔링 보강 첨삭',
+        correctedText: content + '\n\n[AI 핵심 보강] 성과 지표(%, ms, 배수)를 수치화하여 상단에 배치함으로써 설득력을 높였습니다.',
         feedbacks: [
-          "경험의 배경과 성과 지표간의 연계가 매끄럽습니다.",
-          "기술 키워드 및 문제 해결 과정이 명확하게 기술되어 있습니다."
+          '경험의 배경과 성과 지표간의 연계가 매끄럽습니다.',
+          '기술 키워드 및 문제 해결 과정이 명확하게 기술되어 있습니다.',
         ],
         overallScore: 88,
         scoreBreakdown: { jobFit: 90, readability: 88, logic: 85, specificity: 88 },
-        strengths: ["직무 관련 실무 경험 강조", "문제 상황 해결 스토리라인 명확"],
-        weaknesses: ["정량적 지표 추가 보강 권장"],
-        recommendedKeywords: ["개선 지표", "성능 최적화", "협업 도구"],
+        strengths: ['직무 관련 실무 경험 강조', '문제 상황 해결 스토리라인 명확'],
+        weaknesses: ['정량적 지표 추가 보강 권장'],
+        recommendedKeywords: ['개선 지표', '성능 최적화', '협업 도구'],
         lineByLineDiff: [
-          { original: content.substring(0, 60), corrected: content.substring(0, 60) + " (성과 지표 수치화 보강)", reason: "임팩트 및 신뢰도 강화" }
+          { original: content.substring(0, 60), corrected: content.substring(0, 60) + ' (성과 지표 수치화 보강)', reason: '임팩트 및 신뢰도 강화' },
         ],
         interviewQuestions: [
-          { question: "프로젝트 진행 과정에서 가장 해결하기 까다로웠던 문제는 무엇이었습니까?", interviewerIntent: "문제 해결 역량 및 원인 분석력을 검증하고자 함", modelAnswer: "핵심 병목 구간을 로그 분석으로 식별한 뒤 알고리즘 구조 변경을 통해 처리 속도를 향상시켰습니다.", keyTip: "문제 원인-해결 행동-결과 수치의 3단계 구조로 답변하세요." }
-        ]
+          { question: '프로젝트 진행 과정에서 가장 해결하기 까다로웠던 문제는 무엇이었습니까?', interviewerIntent: '문제 해결 역량 및 원인 분석력을 검증하고자 함', modelAnswer: '핵심 병목 구간을 로그 분석으로 식별한 뒤 알고리즘 구조 변경을 통해 처리 속도를 향상시켰습니다.', keyTip: '문제 원인-해결 행동-결과 수치의 3단계 구조로 답변하세요.' },
+        ],
       });
     }
 
@@ -203,30 +306,23 @@ ${content}
     const afterCharCount = correctedText.length;
     const afterWordCount = correctedText.trim().split(/\s+/).length;
 
-    parsedResult.summaryComparison = {
-      beforeWordCount,
-      afterWordCount,
-      beforeCharCount,
-      afterCharCount,
-    };
+    parsedResult.summaryComparison = { beforeWordCount, afterWordCount, beforeCharCount, afterCharCount };
 
+    // usage_logs 기록
     try {
       const supabaseClient = getSupabaseClient();
-      await supabaseClient.from('usage_logs').insert([
-        {
-          job_title: jobTitle,
-          character_count: content.length,
-          is_pro: isPro === true || isPro === 'true',
-        },
-      ]);
+      await supabaseClient.from('usage_logs').insert([{
+        job_title: jobTitle,
+        character_count: content.length,
+        is_pro: verifiedIsPro, // [P0-FIX] 클라이언트 값 대신 서버 검증값 사용
+      }]);
     } catch (logErr) {
       console.warn('Logging to usage_logs failed:', logErr);
     }
 
-    // history_items 서버사이드 저장 (서비스 키 → RLS 우회, 데이터 유실 방지)
+    // [P0-FIX] history_items 서버사이드 저장 (단일 저장 — 클라이언트 중복 저장 제거됨)
     try {
       const supabaseClient = getSupabaseClient();
-      const { userId } = req.body;
       const historyId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       const historyPayload: any = {
         id: historyId,
@@ -240,9 +336,10 @@ ${content}
       const { error: histErr } = await supabaseClient.from('history_items').insert([historyPayload]);
       if (histErr) {
         console.warn('history_items insert failed:', histErr.message);
-      } else {
-        console.log('history_items saved:', historyId);
       }
+
+      // 클라이언트가 로컬 히스토리 표시용 id를 알 수 있도록 응답에 포함
+      parsedResult._historyId = historyId;
     } catch (histErr) {
       console.warn('history_items insert exception:', histErr);
     }
@@ -252,13 +349,14 @@ ${content}
     console.error('Gemini API Correction Error:', error);
     let errorMessage = error.message || '자소서 교정 처리 중 오류가 발생했습니다.';
     if (errorMessage.includes('API key not valid') || errorMessage.includes('API_KEY_INVALID') || error.status === 400) {
-      errorMessage = 'Gemini API 키가 유효하지 않거나 비활성화되었습니다. Google AI Studio (https://aistudio.google.com/app/apikey)에서 발급받으신 "AIzaSy..."로 시작하는 정식 API 키를 Vercel GEMINI_API_KEY 환경변수에 입력해 주세요.';
+      errorMessage = 'Gemini API 키가 유효하지 않거나 비활성화되었습니다. Vercel 환경변수의 GEMINI_API_KEY를 확인해 주세요.';
     }
     return res.status(500).json({ error: errorMessage });
   }
 });
 
-app.post('/api/notify-deposit', async (req, res) => {
+// ─── POST /api/notify-deposit ─────────────────────────────────────────────────
+app.post('/api/notify-deposit', notifyLimiter, async (req, res) => {
   try {
     const { depositorName, amount, product, email } = req.body;
     const discordWebhookUrl =
@@ -274,20 +372,18 @@ app.post('/api/notify-deposit', async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        embeds: [
-          {
-            title: '🔔 [Dethan 디든] 새로운 무통장 입금 확인 요청!',
-            color: 0x5865f2,
-            fields: [
-              { name: '👤 입금자 성함', value: depositorName || '미입력', inline: true },
-              { name: '💰 입금 금액', value: `${Number(amount).toLocaleString()}원`, inline: true },
-              { name: '📦 신청 상품', value: product || '무제한 이용권', inline: false },
-              { name: '📧 신청자 이메일/ID', value: email || '미입력', inline: false },
-            ],
-            timestamp: new Date().toISOString(),
-            footer: { text: 'Dethan Pro 입금 알림' },
-          },
-        ],
+        embeds: [{
+          title: '🔔 [Dethan 디든] 새로운 무통장 입금 확인 요청!',
+          color: 0x5865f2,
+          fields: [
+            { name: '👤 입금자 성함', value: depositorName || '미입력', inline: true },
+            { name: '💰 입금 금액', value: `${Number(amount).toLocaleString()}원`, inline: true },
+            { name: '📦 신청 상품', value: product || '무제한 이용권', inline: false },
+            { name: '📧 신청자 이메일/ID', value: email || '미입력', inline: false },
+          ],
+          timestamp: new Date().toISOString(),
+          footer: { text: 'Dethan Pro 입금 알림' },
+        }],
       }),
     });
 

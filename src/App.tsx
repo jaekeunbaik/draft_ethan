@@ -25,15 +25,15 @@ const checkIsAdminUser = (user: any) => {
   const cleanMetaEmail = metaEmail.toLowerCase().trim();
   const rawId = user.id || '';
 
+  // [P0-FIX] Admin UUID를 소스코드에 하드코딩하지 않고 환경변수에서 읽음
+  const adminIds = (import.meta.env.VITE_ADMIN_USER_IDS || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean);
+
   return (
     cleanEmail.startsWith('axsza') ||
     cleanMetaEmail.startsWith('axsza') ||
-    rawId === 'd54f0cc2-a6b5-471e-9e8f-3410a8f611fc' || // 대표님의 Kakao ID 강제 허용
-    (import.meta.env.VITE_ADMIN_EMAILS &&
-      import.meta.env.VITE_ADMIN_EMAILS.toLowerCase().split(',').some((e: string) =>
-        cleanEmail === e || cleanMetaEmail === e
-      )
-    )
+    adminIds.includes(rawId) ||
+    adminEmails.some((e: string) => cleanEmail === e || cleanMetaEmail === e)
   );
 };
 
@@ -320,9 +320,11 @@ export default function App() {
     loadHistory();
   }, [user]);
 
-  // Save history to Supabase (if logged in) and localStorage backup
-  const saveToHistory = async (req: CorrectionRequest, res: CorrectionResponse) => {
-    const id = Date.now().toString();
+  // [P0-FIX] saveToHistory: localStorage에만 저장. DB 저장은 api/index.ts 서버에서 단일 처리.
+  // 이중 저장(클라이언트 + 서버) 문제 해결 — DB 레코드 2개 삽입 버그 수정.
+  const saveToHistory = (req: CorrectionRequest, res: CorrectionResponse, serverHistoryId?: string) => {
+    // 서버에서 반환된 _historyId 사용 (없으면 타임스탬프 fallback)
+    const id = serverHistoryId || Date.now().toString();
     const createdAt = new Date().toISOString();
     const newItem: HistoryItem = {
       id,
@@ -334,31 +336,13 @@ export default function App() {
     const updated = [newItem, ...history].slice(0, 30);
     setHistory(updated);
 
-    // LocalStorage Backup
+    // LocalStorage Backup (오프라인 대비 + 빠른 UI 복원)
     try {
       localStorage.setItem('ai_coverletter_history', JSON.stringify(updated));
     } catch (e) {
       console.error('Failed to save to localStorage:', e);
     }
-
-    // Supabase Sync (save both logged-in users and guest submissions to history_items)
-    try {
-      const validDbId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined;
-      const historyPayload: any = {
-        created_at: createdAt,
-        job_title: req.jobTitle,
-        company_name: req.companyName || null,
-        request_data: req,
-        result_data: res,
-      };
-
-      if (validDbId) historyPayload.id = validDbId;
-      if (user?.id) historyPayload.user_id = user.id;
-
-      await supabase.from('history_items').insert([historyPayload]);
-    } catch (e) {
-      console.error('Failed to save history to Supabase:', e);
-    }
+    // Supabase insert 제거 — 서버(api/index.ts)에서 단일 저장
   };
 
   const handleClearHistory = async () => {
@@ -420,7 +404,7 @@ export default function App() {
 
   // Submit Handler
   const handleSubmit = async (req: CorrectionRequest) => {
-    // 1. Enforce login check (block guests)
+    // 1. 로그인 체크
     if (!user) {
       setError('AI 첨삭 기능을 이용하려면 먼저 로그인이 필요합니다.');
       setIsAuthOpen(true);
@@ -431,7 +415,7 @@ export default function App() {
     setError(null);
     setRequest(req);
 
-    // 1-1. Real-time DB Re-verification: Check if PRO membership has expired during active session
+    // 1-1. 화면 PRO 상태 갱신 (만료 자동 다운그레이드)
     let currentIsPro = isPro;
     try {
       const { data: profileData } = await supabase
@@ -443,12 +427,7 @@ export default function App() {
       if (profileData) {
         if (profileData.is_pro && profileData.pro_expires_at) {
           if (new Date(profileData.pro_expires_at) < new Date()) {
-            console.log('PRO membership expired during active session. Reverting to free tier.');
-            await supabase
-              .from('profiles')
-              .update({ is_pro: false, pro_expires_at: null })
-              .eq('id', user.id);
-            
+            await supabase.from('profiles').update({ is_pro: false, pro_expires_at: null }).eq('id', user.id);
             setIsPro(false);
             currentIsPro = false;
             alert('⏰ PRO 이용권 기간이 만료되어 일반 회원(일 3회 제한)으로 변경되었습니다.');
@@ -462,91 +441,47 @@ export default function App() {
         }
       }
     } catch (e) {
-      console.warn('Realtime profile check warning:', e);
+      console.warn('Profile PRO check warning:', e);
     }
 
-    // 2. Gating check: Block free users executing more than 3 requests daily (measured from KST 6:00 AM)
+    // [P0-FIX] 무료 한도 사전 체크 제거 → 서버(api/index.ts)에서 단일 검증
+    // 클라이언트 사전 체크는 UX용 빠른 피드백 목적으로만 localStorage 기반 유지
     if (!currentIsPro) {
-      try {
-        const now = new Date();
-        // Convert to KST representational hours (UTC + 9)
-        const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-        const kstCutoff = new Date(kstNow);
-        kstCutoff.setUTCHours(6, 0, 0, 0); // Target 6:00 AM KST
-
-        // If current KST is before 6:00 AM KST, the reset happens at 6:00 AM KST of yesterday
-        if (kstNow.getUTCHours() < 6) {
-          kstCutoff.setUTCDate(kstCutoff.getUTCDate() - 1);
-        }
-
-        // Convert back to UTC cutoff date
-        const utcCutoffTime = new Date(kstCutoff.getTime() - (9 * 60 * 60 * 1000));
-
-        // Fetch profile to check if usage has been reset globally/manually
-        const { data: profile, error: profileErr } = await supabase
-          .from('profiles')
-          .select('free_usage_reset_at')
-          .eq('id', user.id)
-          .single();
-
-        if (profileErr) throw profileErr;
-
-        let finalCutoffTime = utcCutoffTime;
-        if (profile && profile.free_usage_reset_at) {
-          const resetTime = new Date(profile.free_usage_reset_at);
-          if (resetTime > utcCutoffTime) {
-            finalCutoffTime = resetTime;
-          }
-        }
-
-        const { count, error: countError } = await supabase
-          .from('history_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .gte('created_at', finalCutoffTime.toISOString());
-
-        if (countError) throw countError;
-
-        if (count !== null && count >= 3) {
-          setError('일일 무료 AI 첨삭 한도(3회)를 모두 소진하셨습니다. 업그레이드 하시면 무제한 첨삭 및 정밀 분석이 가능합니다.');
-          setIsPaymentOpen(true);
-          setIsLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Failed to verify usage logs from database:', err);
-        // Fallback to local storage
-        const currentUsage = getFreeUsageToday();
-        if (currentUsage >= 3) {
-          setError('일일 무료 AI 첨삭 한도(3회)를 모두 소진하셨습니다. 업그레이드 하시면 무제한 첨삭 및 정밀 분석이 가능합니다.');
-          setIsPaymentOpen(true);
-          setIsLoading(false);
-          return;
-        }
+      const currentUsage = getFreeUsageToday();
+      if (currentUsage >= 3) {
+        setError('일일 무료 AI 첨삭 한도(3회)를 소진했습니다. 서버에서 최종 확인 후 처리됩니다.');
+        // 서버로 보내서 정확한 DB 카운트로 최종 판단
       }
     }
 
     try {
+      // [P0-FIX] isPro를 API body에서 제거 → 서버가 DB에서 직접 검증
       const res = await fetch('/api/correct', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...req,
-          isPro,
-          userId: user.id
+          userId: user.id,
+          // isPro 제거: 클라이언트 값을 서버에 전달하지 않음 (위조 방지)
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
+        // 서버에서 한도 초과 응답 처리
+        if (res.status === 429 && data.limitExceeded) {
+          setError(data.error || '일일 무료 AI 첨삭 한도(3회)를 모두 소진하셨습니다.');
+          setIsPaymentOpen(true);
+          return;
+        }
         throw new Error(data.error || '자소서 교정 중 오류가 발생했습니다.');
       }
 
       setResult(data);
-      await saveToHistory(req, data);
+      // [P0-FIX] 서버에서 반환된 _historyId로 로컬 히스토리와 DB 동기화
+      saveToHistory(req, data, data._historyId);
+
       const kakaoNickname =
         user?.user_metadata?.full_name ||
         user?.user_metadata?.name ||
@@ -560,12 +495,12 @@ export default function App() {
 
       notifyCorrectionSuccess(req, userDisplay, currentIsPro);
 
-      // Increment limits locally if using free tier
-      if (!isPro) {
+      // 로컬 카운트도 동기화 (localStorage fallback용)
+      if (!currentIsPro) {
         incrementFreeUsage();
       }
 
-      // Scroll to result
+      // 결과 섹션으로 스크롤
       setTimeout(() => {
         document.getElementById('result-section')?.scrollIntoView({ behavior: 'smooth' });
       }, 150);

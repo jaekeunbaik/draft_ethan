@@ -60,7 +60,8 @@ export const InstantRoaster: React.FC<InstantRoasterProps> = ({ onStartFullAnaly
       const kakao = (window as any).Kakao;
       if (!kakao.isInitialized()) {
         try {
-          kakao.init('41eea8dec5f5c9fdd7723e9386e0aa78');
+          // [P0-FIX] Kakao App Key를 환경변수에서 읽음 (소스코드 노출 방지)
+          kakao.init(import.meta.env.VITE_KAKAO_APP_KEY || '41eea8dec5f5c9fdd7723e9386e0aa78');
         } catch (e) {
           console.warn('Kakao init fallback:', e);
         }
