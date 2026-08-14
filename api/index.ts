@@ -320,7 +320,12 @@ ${content}
       console.warn('Logging to usage_logs failed:', logErr);
     }
 
-    // [P0-FIX] history_items 서버사이드 저장 (단일 저장 — 클라이언트 중복 저장 제거됨)
+    // [FIX] history_items 서버사이드 저장
+    // SUPABASE_SERVICE_ROLE_KEY가 있으면 RLS 우회로 직접 저장
+    // 없으면 클라이언트(유저 세션)가 저장하도록 플래그 반환
+    const hasServiceKey = !!(process.env.SUPABASE_SERVICE_ROLE_KEY);
+    let savedByServer = false;
+
     try {
       const supabaseClient = getSupabaseClient();
       const historyId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -333,15 +338,26 @@ ${content}
       };
       if (userId) historyPayload.user_id = userId;
 
-      const { error: histErr } = await supabaseClient.from('history_items').insert([historyPayload]);
-      if (histErr) {
-        console.warn('history_items insert failed:', histErr.message);
+      if (hasServiceKey) {
+        // Service Role Key 있음 → RLS 우회 직접 저장
+        const { error: histErr } = await supabaseClient.from('history_items').insert([historyPayload]);
+        if (histErr) {
+          console.warn('history_items insert failed (service role):', histErr.message);
+        } else {
+          savedByServer = true;
+          parsedResult._historyId = historyId;
+        }
+      } else {
+        // Service Role Key 없음 → 클라이언트(유저 세션)에게 저장 위임
+        console.warn('[history_items] SUPABASE_SERVICE_ROLE_KEY 미설정. 클라이언트 저장으로 fallback.');
+        parsedResult._historyId = historyId;
+        parsedResult._clientSave = true; // 클라이언트가 직접 저장하도록 신호
+        parsedResult._historyPayload = historyPayload;
       }
-
-      // 클라이언트가 로컬 히스토리 표시용 id를 알 수 있도록 응답에 포함
-      parsedResult._historyId = historyId;
     } catch (histErr) {
       console.warn('history_items insert exception:', histErr);
+      // 클라이언트 저장 fallback
+      parsedResult._clientSave = true;
     }
 
     return res.json(parsedResult);

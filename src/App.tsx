@@ -479,8 +479,22 @@ export default function App() {
       }
 
       setResult(data);
-      // [P0-FIX] 서버에서 반환된 _historyId로 로컬 히스토리와 DB 동기화
+      // 서버에서 반환된 _historyId로 로컬 히스토리와 DB 동기화
       saveToHistory(req, data, data._historyId);
+
+      // [FIX] 서버에 SUPABASE_SERVICE_ROLE_KEY가 없으면 클라이언트(유저 세션)로 직접 저장
+      // 유저 세션이 있으므로 RLS "Users can manage their own history items" 정책 통과 가능
+      if (data._clientSave && data._historyPayload && user) {
+        try {
+          const payload = { ...data._historyPayload };
+          // 내부 플래그 필드 제거 (DB 컬럼 없음)
+          delete payload._clientSave;
+          delete payload._historyPayload;
+          await supabase.from('history_items').insert([payload]);
+        } catch (e) {
+          console.warn('Client-side history_items fallback insert failed:', e);
+        }
+      }
 
       const kakaoNickname =
         user?.user_metadata?.full_name ||
