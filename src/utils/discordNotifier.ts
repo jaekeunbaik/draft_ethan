@@ -71,19 +71,45 @@ const sendDiscordEmbed = async (options: SendDiscordEmbedOptions): Promise<boole
 };
 
 let lastVisitorNotifyTime = 0;
+let isVisitorNotifying = false;
+const VISITOR_DEDUPE_KEY = 'dethan_visitor_notify_lock';
 
 /**
- * 1. notifyVisitor(): 유저 방문 시 알림 (스마트 봇 감지, SNS 유입 채널 분석, 대시보드 스타일 포맷)
+ * 1. notifyVisitor(): 유저 방문 시 알림 (3중 락으로 중복 알림 100% 방지, 스마트 봇 감지, SNS 유입 채널 분석)
  */
 export const notifyVisitor = async (): Promise<boolean> => {
   const now = Date.now();
-  // React 18 StrictMode 이중 마운트 및 짧은 시간 내 중복 접속 알림 방지 (10초 쿨다운)
-  if (now - lastVisitorNotifyTime < 10000) {
+
+  // 1단계: 메모리 락 (15초 쿨다운 및 동시 실행 방지)
+  if (isVisitorNotifying || now - lastVisitorNotifyTime < 15000) {
     return false;
   }
+
+  // 2단계: 브라우저 세션/로컬 스토리지 락 (동일 브라우저 세션에서 5분 이내 중복 전송 원천 차단)
+  if (typeof window !== 'undefined') {
+    try {
+      const sessionLock = window.sessionStorage?.getItem(VISITOR_DEDUPE_KEY);
+      const localLock = window.localStorage?.getItem(VISITOR_DEDUPE_KEY);
+      const lastTs = Math.max(
+        sessionLock ? parseInt(sessionLock, 10) : 0,
+        localLock ? parseInt(localLock, 10) : 0
+      );
+      if (lastTs && now - lastTs < 300000) { // 5분(300,000ms) 이내 중복 알림 차단
+        return false;
+      }
+      window.sessionStorage?.setItem(VISITOR_DEDUPE_KEY, String(now));
+      window.localStorage?.setItem(VISITOR_DEDUPE_KEY, String(now));
+    } catch (e) {
+      // 스토리지 접근 제한 환경 예외 처리
+    }
+  }
+
+  isVisitorNotifying = true;
   lastVisitorNotifyTime = now;
-  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
-  const rawReferrer = typeof document !== 'undefined' ? (document.referrer || '') : '';
+
+  try {
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
+    const rawReferrer = typeof document !== 'undefined' ? (document.referrer || '') : '';
 
   // 1. 봇 / 크롤러 판별
   let isBot = false;
@@ -150,18 +176,24 @@ export const notifyVisitor = async (): Promise<boolean> => {
   const embedColor = isBot ? 0x95a5a6 : 0x6366f1; // 봇은 차분한 그레이, 유저는 선명한 인디고
   const statusEmoji = isBot ? '🤖' : '✨';
 
-  return sendDiscordEmbed({
-    title: `${statusEmoji} [Dethan 디든] 실시간 방문 알림 대시보드`,
-    color: embedColor,
-    fields: [
-      { name: '📊 방문자 분류', value: `**${visitorType}**`, inline: true },
-      { name: '🔗 유입 채널', value: `**${channelName}**`, inline: true },
-      { name: '📱 기기 및 OS', value: osName, inline: true },
-      { name: '🌐 브라우저', value: browserName, inline: true },
-      { name: '🕒 접속 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
-    ],
-    footerText: isBot ? 'Dethan (디든) 봇 트래픽 모니터링' : 'Dethan (디든) 실시간 유저 모니터링',
-  });
+    return await sendDiscordEmbed({
+      title: `${statusEmoji} [Dethan 디든] 실시간 방문 알림 대시보드`,
+      color: embedColor,
+      fields: [
+        { name: '📊 방문자 분류', value: `**${visitorType}**`, inline: true },
+        { name: '🔗 유입 채널', value: `**${channelName}**`, inline: true },
+        { name: '📱 기기 및 OS', value: osName, inline: true },
+        { name: '🌐 브라우저', value: browserName, inline: true },
+        { name: '🕒 접속 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
+      ],
+      footerText: isBot ? 'Dethan (디든) 봇 트래픽 모니터링' : 'Dethan (디든) 실시간 유저 모니터링',
+    });
+  } catch (error) {
+    console.error('[DiscordNotifier] 방문자 알림 실패:', error);
+    return false;
+  } finally {
+    isVisitorNotifying = false;
+  }
 };
 
 /**

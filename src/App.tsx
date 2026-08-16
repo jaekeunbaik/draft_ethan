@@ -210,9 +210,13 @@ export default function App() {
     };
   }, [user]);
 
-  // Real-time visitor notification to Discord Webhook (Fires on every visit)
+  // Real-time visitor notification to Discord Webhook (React StrictMode 중복 방지 1회 실행 보장)
+  const hasVisitorNotifiedRef = React.useRef(false);
   useEffect(() => {
-    notifyVisitor();
+    if (!hasVisitorNotifiedRef.current) {
+      hasVisitorNotifiedRef.current = true;
+      notifyVisitor();
+    }
   }, []);
 
   // Handle URL redirect query parameters for payment callbacks
