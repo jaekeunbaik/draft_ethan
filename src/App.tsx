@@ -217,7 +217,7 @@ export default function App() {
       hasVisitorNotifiedRef.current = true;
       notifyVisitor({ user, isPro });
     }
-  }, [user, isPro]);
+  }, []);
 
   // Handle URL redirect query parameters for payment callbacks
   useEffect(() => {

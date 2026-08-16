@@ -81,20 +81,38 @@ export interface VisitorInfo {
   isPro?: boolean;
 }
 
+const COOKIE_LOCK_NAME = 'dethan_visit_lock_v3';
+
 /**
- * 1. notifyVisitor(): 유저 방문 시 알림 (로그인 유저 닉네임/등급 표기, 동기 락으로 중복 100% 방지, 스마트 봇 감지)
+ * 1. notifyVisitor(): 유저 방문 시 알림 (로그인 유저 닉네임/등급 표기, Chrome 프리렌더 방지, 쿠키 락)
  */
 export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> => {
+  // 1. Chrome Speculative Prerender 감지 (주소창 입력 시 백그라운드 프리렌더 1회 + 실제 활성화 1회 이중 실행 방지)
+  if (typeof document !== 'undefined' && (document as any).prerendering) {
+    document.addEventListener('prerenderingchange', () => {
+      notifyVisitor(userInfo);
+    }, { once: true });
+    return false;
+  }
+
+  // 2. Cookie 락 (브라우저 모든 탭/프리렌더/메모리 컨텍스트 통합 3분 중복 차단)
+  if (typeof document !== 'undefined') {
+    if (document.cookie.includes(`${COOKIE_LOCK_NAME}=1`)) {
+      return false;
+    }
+    document.cookie = `${COOKIE_LOCK_NAME}=1; max-age=180; path=/; samesite=lax`;
+  }
+
   const now = Date.now();
 
-  // 1단계: 메모리 즉시 락 (동시 호출 및 30초 쿨다운 원천 차단)
+  // 3. 메모리 즉시 락 (동시 호출 및 30초 쿨다운 차단)
   if (isVisitorNotifying || now - lastVisitorNotifyTime < 30000) {
     return false;
   }
   isVisitorNotifying = true;
   lastVisitorNotifyTime = now;
 
-  // 2단계: 브라우저 세션/로컬 스토리지 즉시 락 (동일 브라우저 세션에서 5분 이내 중복 전송 원천 차단)
+  // 4. 브라우저 세션/로컬 스토리지 락
   if (typeof window !== 'undefined') {
     try {
       const sessionLock = window.sessionStorage?.getItem(VISITOR_DEDUPE_KEY);
@@ -103,7 +121,7 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
         sessionLock ? parseInt(sessionLock, 10) : 0,
         localLock ? parseInt(localLock, 10) : 0
       );
-      if (lastTs && now - lastTs < 300000) { // 5분(300,000ms) 이내 중복 알림 차단
+      if (lastTs && now - lastTs < 180000) { // 3분(180,000ms) 이내 중복 알림 차단
         isVisitorNotifying = false;
         return false;
       }
