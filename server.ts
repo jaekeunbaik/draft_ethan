@@ -5,6 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
@@ -17,6 +18,19 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json({ limit: '10mb' }));
+
+  // 인메모리 스마트 캐시 (동일 요청 중복 호출 방지 및 초고속 0초 응답)
+  const resultCache = new Map<string, { data: any; timestamp: number }>();
+  const CACHE_TTL_MS = 60 * 60 * 1000; // 1시간 캐시
+
+  // API 호출 남용 방지 (정상 유저는 여유 있게 15분에 최대 60회 허용, 악성 봇만 차단)
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    message: { error: '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해 주세요.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
 
   // Initialize Supabase Client
   const getSupabaseClient = () => {
@@ -41,8 +55,8 @@ async function startServer() {
     });
   };
 
-  // API Endpoint for Cover Letter Proofreading
-  app.post('/api/correct', async (req, res) => {
+  // API Endpoint for Cover Letter Proofreading (무중단 & 멀티 모델 자동 폴백)
+  app.post('/api/correct', apiLimiter, async (req, res) => {
     try {
       const { question, content, jobTitle, companyName, tone, focusPoints, targetCharCount, isPro } = req.body;
 
@@ -52,6 +66,14 @@ async function startServer() {
 
       if (!jobTitle || !jobTitle.trim()) {
         return res.status(400).json({ error: '희망 직무를 입력해 주세요.' });
+      }
+
+      // 1. 캐시 확인: 동일한 내용/직무/조건 요청 시 0.01초 만에 즉시 반환 (API 비용 0원 & 끊김 방지)
+      const cacheKey = JSON.stringify({ question, content: content.trim(), jobTitle: jobTitle.trim(), companyName, tone, focusPoints, targetCharCount });
+      const cached = resultCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        console.log('⚡ [Smart Cache] 캐시된 교정 결과를 0초 만에 즉시 반환합니다.');
+        return res.json(cached.data);
       }
 
       const ai = getAiClient();
@@ -89,7 +111,8 @@ ${question || '자유 지원 항목'}
 ${content}
 `;
 
-      const modelsToTry = ['gemini-2.5-flash', 'gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
+      // 2. 멀티 모델 자동 폴백 체인 (어떤 모델이 일시 지연되어도 끊김 없이 다음 모델이 즉시 처리)
+      const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-lite'];
       let response: any = null;
       let lastError: any = null;
 
@@ -172,14 +195,14 @@ ${content}
                     items: {
                       type: Type.OBJECT,
                       properties: {
-                        question: { type: Type.STRING },
-                        interviewerIntent: { type: Type.STRING },
-                        modelAnswer: { type: Type.STRING },
-                        keyTip: { type: Type.STRING },
+                        question: { type: Type.STRING, description: '면접관의 날카로운 압박 질문' },
+                        interviewerIntent: { type: Type.STRING, description: '면접관이 이 질문을 던지는 진짜 속마음 및 의도' },
+                        modelAnswer: { type: Type.STRING, description: '합격을 부르는 사이다 모범 답변' },
+                        keyTip: { type: Type.STRING, description: '면접장 답변 시 주의사항 및 핵심 팁' },
                       },
                       required: ['question', 'interviewerIntent', 'modelAnswer', 'keyTip'],
                     },
-                    description: '예상 압박 면접 질문 및 모범 답안',
+                    description: '실제 면접관의 날카로운 압박 질문 3가지와 사이다 모범 답안',
                   },
                 },
                 required: [
@@ -202,6 +225,8 @@ ${content}
         } catch (err: any) {
           lastError = err;
           console.warn(`[Gemini API Warning] Model ${model} failed, trying fallback:`, err.message);
+          // 다음 모델 시도 전 짧은 0.3초 대기 (안정적 백오프)
+          await new Promise((r) => setTimeout(r, 300));
         }
       }
 

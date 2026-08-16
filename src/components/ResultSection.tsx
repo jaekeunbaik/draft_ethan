@@ -22,17 +22,22 @@ import {
   MessageSquare,
   HelpCircle,
   ShieldCheck,
+  Lock,
 } from 'lucide-react';
 
 interface ResultSectionProps {
   result: CorrectionResponse;
   request: CorrectionRequest;
+  isPro?: boolean;
+  onOpenPayment?: () => void;
   onReEdit?: () => void;
 }
 
 export const ResultSection: React.FC<ResultSectionProps> = ({
   result,
   request,
+  isPro = false,
+  onOpenPayment,
   onReEdit,
 }) => {
   const [activeTab, setActiveTab] = useState<'text' | 'diff' | 'analysis' | 'keywords'>('text');
@@ -425,8 +430,41 @@ ${result.recommendedKeywords.join(', ')}
 
             {/* Display Body */}
             {viewMode === 'corrected' ? (
-              <div className="bg-gray-50 border border-gray-100 rounded-xl p-6 sm:p-8 text-gray-900 text-sm leading-relaxed whitespace-pre-wrap font-sans space-y-4 relative group">
-                {result.correctedText}
+              <div className="relative">
+                <div className={`bg-gray-50 border border-gray-100 rounded-xl p-6 sm:p-8 text-gray-900 text-sm leading-relaxed whitespace-pre-wrap font-sans space-y-4 relative group ${!isPro ? 'select-none' : ''}`}>
+                  {!isPro ? (
+                    <>
+                      <span>{result.correctedText.slice(0, 180)}</span>
+                      <span className="filter blur-md opacity-40 block mt-2">{result.correctedText.slice(180)}</span>
+                    </>
+                  ) : (
+                    result.correctedText
+                  )}
+                </div>
+
+                {!isPro && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-white via-white/85 to-transparent rounded-xl flex flex-col items-center justify-end pb-8 p-4 text-center">
+                    <div className="max-w-md bg-white border-2 border-indigo-600 rounded-2xl p-5 sm:p-6 shadow-2xl space-y-3">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-extrabold text-xs">
+                        <Lock className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Dethan Pro 전용 완성본</span>
+                      </div>
+                      <h4 className="font-extrabold text-base text-gray-900 leading-snug">
+                        나머지 완성형 자기소개서 전체를 즉시 확인하세요!
+                      </h4>
+                      <p className="text-xs text-gray-600">
+                        스타벅스 커피 한 잔보다 저렴한 <strong className="text-indigo-600">3,900원</strong>으로 7일 동안 무제한 팩폭 첨삭 & 전체 완성본을 열람하세요.
+                      </p>
+                      <button
+                        onClick={onOpenPayment}
+                        className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center space-x-1.5 cursor-pointer"
+                      >
+                        <Sparkles className="w-4 h-4 text-amber-300" />
+                        <span>3,900원에 전체 자소서 & 면접 질문 잠금 해제 &gt;</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -441,12 +479,19 @@ ${result.recommendedKeywords.join(', ')}
                 </div>
 
                 {/* Corrected */}
-                <div className="bg-emerald-50/30 border border-emerald-100 rounded-xl p-5 text-xs sm:text-sm text-gray-900 space-y-2">
+                <div className="bg-emerald-50/30 border border-emerald-100 rounded-xl p-5 text-xs sm:text-sm text-gray-900 space-y-2 relative">
                   <div className="text-xs font-bold text-emerald-600 border-b border-emerald-100 pb-2 mb-3">
                     [AI 첨삭 교정본]
                   </div>
-                  <div className="whitespace-pre-wrap leading-relaxed">
-                    {result.correctedText}
+                  <div className={`whitespace-pre-wrap leading-relaxed ${!isPro ? 'select-none' : ''}`}>
+                    {!isPro ? (
+                      <>
+                        <span>{result.correctedText.slice(0, 180)}</span>
+                        <span className="filter blur-md opacity-40 block mt-2">{result.correctedText.slice(180)}</span>
+                      </>
+                    ) : (
+                      result.correctedText
+                    )}
                   </div>
                 </div>
               </div>
@@ -642,31 +687,60 @@ ${result.recommendedKeywords.join(', ')}
                     </button>
                   </div>
 
-                  {/* Interviewer Intent */}
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-900 flex items-start space-x-2">
-                    <HelpCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="font-bold text-amber-900">😈 면접관 속마음 / 질문 의도:</strong>{' '}
-                      {iq.interviewerIntent}
+                  {/* Interviewer Intent & Model Answer */}
+                  {!isPro && idx > 0 ? (
+                    <div className="relative rounded-xl overflow-hidden p-4 bg-gray-50 border border-indigo-100 text-center space-y-3">
+                      <div className="filter blur-sm opacity-40 select-none space-y-2 pointer-events-none">
+                        <div className="p-3 bg-amber-500/10 rounded-xl text-xs text-amber-900">
+                          <strong>😈 면접관 속마음 / 질문 의도:</strong> 이 지원자의 실제 문제 해결 역량과 수치 근거를 날카롭게 검증하려는 의도입니다.
+                        </div>
+                        <div className="p-4 bg-indigo-50/60 rounded-xl text-xs text-gray-800">
+                          💡 사이다 모범 답안: 데이터 수치와 구체적 성과를 두괄식으로 답변합니다.
+                        </div>
+                      </div>
+                      <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center p-4">
+                        <div className="flex items-center space-x-1.5 text-xs font-bold text-indigo-900 mb-1">
+                          <Lock className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Dethan Pro 전용 면접관 의도 & 사이다 모범 답안</span>
+                        </div>
+                        <button
+                          onClick={onOpenPayment}
+                          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-xl shadow-md transition active:scale-95 flex items-center space-x-1.5 cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                          <span>3,900원에 실전 면접 족보 잠금 해제 &gt;</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* Interviewer Intent */}
+                      <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-900 flex items-start space-x-2">
+                        <HelpCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="font-bold text-amber-900">😈 면접관 속마음 / 질문 의도:</strong>{' '}
+                          {iq.interviewerIntent}
+                        </div>
+                      </div>
 
-                  {/* Model Answer */}
-                  <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-1.5 text-xs sm:text-sm">
-                    <div className="flex items-center justify-between text-indigo-700 font-bold text-xs">
-                      <span>💡 사이다 모범 답안</span>
-                      <span className="text-[10px] text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded">합격 가이드</span>
-                    </div>
-                    <p className="text-gray-800 leading-relaxed font-medium whitespace-pre-wrap">
-                      &quot;{iq.modelAnswer}&quot;
-                    </p>
-                  </div>
+                      {/* Model Answer */}
+                      <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-1.5 text-xs sm:text-sm">
+                        <div className="flex items-center justify-between text-indigo-700 font-bold text-xs">
+                          <span>💡 사이다 모범 답안</span>
+                          <span className="text-[10px] text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded">합격 가이드</span>
+                        </div>
+                        <p className="text-gray-800 leading-relaxed font-medium whitespace-pre-wrap">
+                          &quot;{iq.modelAnswer}&quot;
+                        </p>
+                      </div>
 
-                  {/* Key Tip */}
-                  <div className="flex items-center space-x-2 text-xs text-gray-500 pt-1">
-                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span><strong className="text-gray-700">면접 꿀팁:</strong> {iq.keyTip}</span>
-                  </div>
+                      {/* Key Tip */}
+                      <div className="flex items-center space-x-2 text-xs text-gray-500 pt-1">
+                        <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span><strong className="text-gray-700">면접 꿀팁:</strong> {iq.keyTip}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

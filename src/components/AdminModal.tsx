@@ -42,6 +42,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [historyItems, setHistoryItems] = useState<AdminHistoryItem[]>([]);
   const [activeTab, setActiveTab] = useState<'requests' | 'profiles' | 'history'>('requests');
+  const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'opened'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
   const [isLoading, setIsLoading] = useState(false);
@@ -310,15 +311,24 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     return true;
   });
 
-  // Filters payment requests
-  const filteredRequests = deduplicatedRequests.filter((p) =>
-    (p.email || '').toLowerCase().includes(cleanQuery) ||
-    (p.depositor_name || '').toLowerCase().includes(cleanQuery) ||
-    (p.id || '').toLowerCase().includes(cleanQuery) ||
-    (p.user_id || '').toLowerCase().includes(cleanQuery)
-  );
-
   const pendingRequestsCount = paymentRequests.filter((r) => r.status === 'pending').length;
+  const approvedRequestsCount = paymentRequests.filter((r) => r.status === 'approved').length;
+  const openedRequestsCount = deduplicatedRequests.filter((r) => r.status === 'opened').length;
+
+  // Filters payment requests by sub-status filter + search query
+  const filteredRequests = deduplicatedRequests
+    .filter((req) => {
+      if (requestStatusFilter === 'pending') return req.status === 'pending';
+      if (requestStatusFilter === 'approved') return req.status === 'approved';
+      if (requestStatusFilter === 'opened') return req.status === 'opened';
+      return true;
+    })
+    .filter((p) =>
+      (p.email || '').toLowerCase().includes(cleanQuery) ||
+      (p.depositor_name || '').toLowerCase().includes(cleanQuery) ||
+      (p.id || '').toLowerCase().includes(cleanQuery) ||
+      (p.user_id || '').toLowerCase().includes(cleanQuery)
+    );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-sm animate-fade-in">
@@ -428,9 +438,61 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 const company = h.company_name || '';
                 return job.toLowerCase().includes(cleanQuery) || company.toLowerCase().includes(cleanQuery) || content.toLowerCase().includes(cleanQuery);
               }).length
-            }건 검색됨
+            }건
           </div>
         </div>
+
+        {/* Status Filter Chips for Payment Requests */}
+        {activeTab === 'requests' && (
+          <div className="px-4 py-2 bg-gray-50/80 border-b border-gray-100 flex items-center gap-1.5 overflow-x-auto shrink-0">
+            <span className="text-[11px] font-bold text-gray-400 mr-1 shrink-0">상태별 필터:</span>
+            
+            <button
+              onClick={() => setRequestStatusFilter('all')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 cursor-pointer ${
+                requestStatusFilter === 'all'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              전체 보기 ({deduplicatedRequests.length})
+            </button>
+
+            <button
+              onClick={() => setRequestStatusFilter('pending')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                requestStatusFilter === 'pending'
+                  ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-200'
+                  : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+              <span>⚡ 미승인 입금대기 ({pendingRequestsCount})</span>
+            </button>
+
+            <button
+              onClick={() => setRequestStatusFilter('approved')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                requestStatusFilter === 'approved'
+                  ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-200'
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+              }`}
+            >
+              <span>✅ 승인 완료 ({approvedRequestsCount})</span>
+            </button>
+
+            <button
+              onClick={() => setRequestStatusFilter('opened')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                requestStatusFilter === 'opened'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+              }`}
+            >
+              <span>⏳ 결제창 열람 ({openedRequestsCount})</span>
+            </button>
+          </div>
+        )}
 
         {/* Dynamic Content Body Area */}
         <div className="flex-1 overflow-y-auto p-4 min-h-[35vh]">

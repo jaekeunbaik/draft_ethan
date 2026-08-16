@@ -668,6 +668,15 @@ export default function App() {
           <ResultSection
             result={result}
             request={request}
+            isPro={isPro}
+            onOpenPayment={() => {
+              if (!user) {
+                alert('PRO 요금제를 활성화하려면 먼저 로그인이 필요합니다.');
+                setIsAuthOpen(true);
+              } else {
+                setIsPaymentOpen(true);
+              }
+            }}
             onReEdit={() => {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}

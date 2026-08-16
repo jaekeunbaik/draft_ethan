@@ -19,11 +19,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
 
   const getAmount = (type: ProductType) => {
-    return type === '7days' ? 1200 : 3900;
+    return type === '7days' ? 3900 : 9900;
   };
 
   const getProductName = (type: ProductType) => {
-    return type === '7days' ? 'Dethan Pro 7일 무제한 이용권' : 'Dethan Pro 30일 무제한 이용권';
+    return type === '7days' ? 'Dethan Pro 7일 무제한 패스' : 'Dethan Pro 30일 무제한 올패스';
   };
 
   // 1. Log payment modal open intent (reuse existing 'opened' intent if present)
@@ -247,13 +247,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-indigo-750">7일 이용권</span>
-                    <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded leading-none">체험용</span>
+                    <span className="text-xs font-extrabold text-indigo-750">7일 완성 패스</span>
+                    <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded leading-none">인기 🔥</span>
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1">집중 지원 기간 단기 추천</p>
+                  <p className="text-[10px] text-gray-400 mt-1">커피 1잔 값으로 7일 무제한</p>
                 </div>
                 <div className="mt-2.5">
-                  <span className="text-base font-extrabold text-gray-900">1,200원</span>
+                  <span className="text-base font-extrabold text-gray-900">3,900원</span>
                   <span className="text-[10px] text-gray-500 font-medium"> / 7일</span>
                 </div>
               </div>
@@ -268,13 +268,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-700">30일 이용권</span>
-                    <span className="text-[9px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded leading-none">실속형</span>
+                    <span className="text-xs font-bold text-gray-700">30일 올패스</span>
+                    <span className="text-[9px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded leading-none">시즌권 👑</span>
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1">여유로운 한 달 합격 완성</p>
+                  <p className="text-[10px] text-gray-400 mt-1">공채 시즌 1달 무제한 + 족보</p>
                 </div>
                 <div className="mt-2.5">
-                  <span className="text-base font-extrabold text-gray-900">3,900원</span>
+                  <span className="text-base font-extrabold text-gray-900">9,900원</span>
                   <span className="text-[10px] text-gray-500 font-medium"> / 30일</span>
                 </div>
               </div>
