@@ -259,11 +259,16 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
   else if (/Macintosh|Mac OS/i.test(userAgent)) osName = 'Mac (macOS)';
   else if (/Windows/i.test(userAgent)) osName = 'Windows PC';
 
-  // 4. 브라우저 파싱
+  // 4. 브라우저 정밀 파싱 (크로미움 기반 브라우저 우선순위 체크)
   let browserName = '기타 브라우저';
   if (/kakao/i.test(userAgent)) browserName = '🟡 카카오톡 인앱';
   else if (/instagram/i.test(userAgent)) browserName = '📸 인스타 인앱';
-  else if (/edg/i.test(userAgent)) browserName = '🟦 Edge';
+  else if (/naver\(/i.test(userAgent)) browserName = '🟢 네이버 앱';
+  else if (/whale/i.test(userAgent)) browserName = '🐳 네이버 웨일 (Whale)';
+  else if (/samsungbrowser/i.test(userAgent)) browserName = '🌌 삼성 인터넷';
+  else if (/edg/i.test(userAgent)) browserName = '🟦 MS Edge';
+  else if (/firefox|fxios/i.test(userAgent)) browserName = '🦊 Firefox';
+  else if (/opr|opera/i.test(userAgent)) browserName = '🔴 Opera';
   else if (/chrome|crios/i.test(userAgent)) browserName = '🔴 Chrome';
   else if (/safari/i.test(userAgent) && !/chrome/i.test(userAgent)) browserName = '🧭 Safari';
 
