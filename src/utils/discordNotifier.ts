@@ -70,14 +70,21 @@ const sendDiscordEmbed = async (options: SendDiscordEmbedOptions): Promise<boole
   }
 };
 
+import { supabase } from '../lib/supabase';
+
 let lastVisitorNotifyTime = 0;
 let isVisitorNotifying = false;
 const VISITOR_DEDUPE_KEY = 'dethan_visitor_notify_lock';
 
+export interface VisitorInfo {
+  user?: any | null;
+  isPro?: boolean;
+}
+
 /**
- * 1. notifyVisitor(): 유저 방문 시 알림 (3중 락으로 중복 알림 100% 방지, 스마트 봇 감지, SNS 유입 채널 분석)
+ * 1. notifyVisitor(): 유저 방문 시 알림 (로그인 유저 닉네임/등급 표기, 3중 락으로 중복 방지, 스마트 봇 감지)
  */
-export const notifyVisitor = async (): Promise<boolean> => {
+export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> => {
   const now = Date.now();
 
   // 1단계: 메모리 락 (15초 쿨다운 및 동시 실행 방지)
@@ -111,31 +118,59 @@ export const notifyVisitor = async (): Promise<boolean> => {
     const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
     const rawReferrer = typeof document !== 'undefined' ? (document.referrer || '') : '';
 
-  // 1. 봇 / 크롤러 판별
-  let isBot = false;
-  let visitorType = '👤 일반 방문자 (Real Human)';
-  if (/Mediapartners-Google/i.test(userAgent)) {
-    isBot = true;
-    visitorType = '🤖 Google 애드센스/광고 분석 봇';
-  } else if (/Googlebot/i.test(userAgent)) {
-    isBot = true;
-    visitorType = '🤖 Google 검색 색인 크롤러';
-  } else if (/bingbot/i.test(userAgent)) {
-    isBot = true;
-    visitorType = '🤖 Bing 검색 크롤러';
-  } else if (/facebookexternalhit|Threads/i.test(userAgent)) {
-    isBot = true;
-    visitorType = '🤖 Meta / Threads 링크 미리보기 봇';
-  } else if (/kakaotalk-scrap/i.test(userAgent)) {
-    isBot = true;
-    visitorType = '🤖 카카오톡 링크 미리보기 봇';
-  } else if (/Yeti|NaverBot/i.test(userAgent)) {
-    isBot = true;
-    visitorType = '🤖 네이버 검색 크롤러';
-  } else if (/bot|crawler|spider|crawling/i.test(userAgent)) {
-    isBot = true;
-    visitorType = '🤖 웹 크롤러 / 봇';
-  }
+    // 유저 세션 확인 (파라미터 우선, 없으면 Supabase 세션 조회)
+    let currentUser = userInfo?.user;
+    let isPro = userInfo?.isPro;
+
+    if (!currentUser && typeof window !== 'undefined') {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.user) {
+          currentUser = sessionData.session.user;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // 1. 봇 / 로그인 회원 / 비회원 판별
+    let isBot = false;
+    let visitorType = '👤 비회원 방문자 (Guest)';
+
+    if (currentUser) {
+      const kakaoNickname =
+        currentUser.user_metadata?.full_name ||
+        currentUser.user_metadata?.name ||
+        currentUser.user_metadata?.preferred_username ||
+        currentUser.user_metadata?.nickname ||
+        currentUser.user_metadata?.user_name;
+
+      const email = currentUser.email;
+      const nickname = kakaoNickname || (email ? email.split('@')[0] : '카카오 회원');
+      const proBadge = isPro ? '👑 PRO 회원' : '⭐ 일반 회원';
+      visitorType = `👤 ${nickname}님 (${proBadge})`;
+    } else if (/Mediapartners-Google/i.test(userAgent)) {
+      isBot = true;
+      visitorType = '🤖 Google 애드센스/광고 분석 봇';
+    } else if (/Googlebot/i.test(userAgent)) {
+      isBot = true;
+      visitorType = '🤖 Google 검색 색인 크롤러';
+    } else if (/bingbot/i.test(userAgent)) {
+      isBot = true;
+      visitorType = '🤖 Bing 검색 크롤러';
+    } else if (/facebookexternalhit|Threads/i.test(userAgent)) {
+      isBot = true;
+      visitorType = '🤖 Meta / Threads 링크 미리보기 봇';
+    } else if (/kakaotalk-scrap/i.test(userAgent)) {
+      isBot = true;
+      visitorType = '🤖 카카오톡 링크 미리보기 봇';
+    } else if (/Yeti|NaverBot/i.test(userAgent)) {
+      isBot = true;
+      visitorType = '🤖 네이버 검색 크롤러';
+    } else if (/bot|crawler|spider|crawling/i.test(userAgent)) {
+      isBot = true;
+      visitorType = '🤖 웹 크롤러 / 봇';
+    }
 
   // 2. 유입 채널 (Referrer) 스마트 분석
   let channelName = '⚡ 직접 접속 / 북마크 / 주소창 입력';
