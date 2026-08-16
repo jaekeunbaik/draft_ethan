@@ -29,7 +29,9 @@ interface ResultSectionProps {
   result: CorrectionResponse;
   request: CorrectionRequest;
   isPro?: boolean;
+  user?: any | null;
   onOpenPayment?: () => void;
+  onOpenAuth?: () => void;
   onReEdit?: () => void;
 }
 
@@ -37,7 +39,9 @@ export const ResultSection: React.FC<ResultSectionProps> = ({
   result,
   request,
   isPro = false,
+  user,
   onOpenPayment,
+  onOpenAuth,
   onReEdit,
 }) => {
   const [activeTab, setActiveTab] = useState<'text' | 'diff' | 'analysis' | 'keywords'>('text');
@@ -179,6 +183,38 @@ ${result.recommendedKeywords.join(', ')}
 
   return (
     <div id="result-section" className="space-y-6">
+      {/* Non-logged-in Guest Conversion Card */}
+      {!user && onOpenAuth && (
+        <div className="bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 border-2 border-yellow-400 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-[#FEE500] border-2 border-yellow-400 flex items-center justify-center text-xl shrink-0 shadow-md shadow-yellow-500/20">
+              🎁
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-black text-amber-950 bg-yellow-300 border border-yellow-400 px-2 py-0.5 rounded-full">
+                  1회 무료 체험 완료
+                </span>
+                <span className="text-xs font-extrabold text-amber-950">이 첨삭 결과를 내 계정에 영구 저장하시겠습니까?</span>
+              </div>
+              <p className="text-xs text-gray-700 mt-1 font-medium">
+                지금 1초 카카오 가입하시면 <b>이 첨삭본이 계정에 평생 보관</b>되며, <b>매일 무료 3회 첨삭</b>이 추가 지급됩니다!
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onOpenAuth}
+            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-[#FEE500] hover:bg-[#FDD835] border-2 border-yellow-400 text-[#191919] font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition transform hover:scale-105 active:scale-95 cursor-pointer shadow-md shadow-yellow-500/20 shrink-0"
+          >
+            <svg className="w-4 h-4 fill-[#191919] shrink-0" viewBox="0 0 24 24">
+              <path d="M12 3c-5.52 0-10 3.58-10 8 0 2.92 1.92 5.48 4.8 6.92-.12.44-.8 2.88-.84 3.08-.04.2.08.28.24.16.12-.08 2.04-1.4 2.88-1.96.96.24 2 .36 2.92.36 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+            </svg>
+            <span>💛 1초 카카오 가입하고 저장</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Banner Card */}
       <div className="bg-gradient-to-r from-[#1e293b] via-[#312e81] to-[#1e293b] border border-indigo-950/20 rounded-2xl p-6 sm:p-8 shadow-md relative overflow-hidden">
         {/* Background glow */}
@@ -747,6 +783,32 @@ ${result.recommendedKeywords.join(', ')}
           </div>
         )}
       </div>
+
+      {/* Bottom Sticky-like Sign-up Card for Guests */}
+      {!user && onOpenAuth && (
+        <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 border border-indigo-700/50 rounded-2xl p-6 text-center text-white shadow-xl space-y-4">
+          <div className="inline-flex items-center gap-1.5 bg-yellow-400 text-black text-xs font-extrabold px-3 py-1 rounded-full shadow-sm">
+            <span>🎁 신규 유저 웰컴 혜택</span>
+          </div>
+          <h3 className="text-lg sm:text-xl font-extrabold tracking-tight">
+            방금 첨삭받은 자소서, 사라지기 전에 저장해두세요!
+          </h3>
+          <p className="text-xs sm:text-sm text-indigo-200 max-w-lg mx-auto">
+            1초 만에 카카오로 시작하면 이 첨삭 결과가 계정에 안전하게 보관되고, 매일 3회 무료 첨삭이 계속 제공됩니다.
+          </p>
+          <div className="pt-2">
+            <button
+              onClick={onOpenAuth}
+              className="px-6 py-3.5 rounded-xl bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-black text-sm inline-flex items-center gap-2 transition transform hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-yellow-500/20 border border-yellow-400"
+            >
+              <svg className="w-5 h-5 fill-[#191919] shrink-0" viewBox="0 0 24 24">
+                <path d="M12 3c-5.52 0-10 3.58-10 8 0 2.92 1.92 5.48 4.8 6.92-.12.44-.8 2.88-.84 3.08-.04.2.08.28.24.16.12-.08 2.04-1.4 2.88-1.96.96.24 2 .36 2.92.36 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+              </svg>
+              <span>💛 1초 카카오 간편 가입하고 계속 이용하기</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

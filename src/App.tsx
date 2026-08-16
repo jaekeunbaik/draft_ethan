@@ -245,6 +245,16 @@ export default function App() {
     }
   }, [user]);
 
+  // Guest Trial 1-time limit gating (무로그인 1회 즉시 무료 체험 로직)
+  const getGuestTrialUsed = () => {
+    const saved = localStorage.getItem('draft_ethan_guest_trial');
+    return saved ? parseInt(saved, 10) : 0;
+  };
+
+  const incrementGuestTrialUsed = () => {
+    localStorage.setItem('draft_ethan_guest_trial', '1');
+  };
+
   // Free Usage Limit Gating Logic (Local fallback)
   const getFreeUsageToday = () => {
     const today = new Date().toDateString();
@@ -408,44 +418,49 @@ export default function App() {
 
   // Submit Handler
   const handleSubmit = async (req: CorrectionRequest) => {
-    // 1. 로그인 체크
+    // 1. 게스트 1회 무료 체험 허용 및 2회차 로그인 체크
     if (!user) {
-      setError('AI 첨삭 기능을 이용하려면 먼저 로그인이 필요합니다.');
-      setIsAuthOpen(true);
-      return;
+      const guestTrialUsed = getGuestTrialUsed();
+      if (guestTrialUsed >= 1) {
+        setError('🎁 첫 1회 무료 체험을 완료하셨습니다! 1초 카카오 가입하시면 매일 3회 무료 첨삭을 계속 이용하실 수 있습니다.');
+        setIsAuthOpen(true);
+        return;
+      }
     }
 
     setIsLoading(true);
     setError(null);
     setRequest(req);
 
-    // 1-1. 화면 PRO 상태 갱신 (만료 자동 다운그레이드)
+    // 1-1. 회원인 경우 PRO 상태 갱신 (만료 자동 다운그레이드)
     let currentIsPro = isPro;
-    try {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('is_pro, pro_expires_at')
-        .eq('id', user.id)
-        .single();
+    if (user) {
+      try {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_pro, pro_expires_at')
+          .eq('id', user.id)
+          .single();
 
-      if (profileData) {
-        if (profileData.is_pro && profileData.pro_expires_at) {
-          if (new Date(profileData.pro_expires_at) < new Date()) {
-            await supabase.from('profiles').update({ is_pro: false, pro_expires_at: null }).eq('id', user.id);
-            setIsPro(false);
-            currentIsPro = false;
-            alert('⏰ PRO 이용권 기간이 만료되어 일반 회원(일 3회 제한)으로 변경되었습니다.');
+        if (profileData) {
+          if (profileData.is_pro && profileData.pro_expires_at) {
+            if (new Date(profileData.pro_expires_at) < new Date()) {
+              await supabase.from('profiles').update({ is_pro: false, pro_expires_at: null }).eq('id', user.id);
+              setIsPro(false);
+              currentIsPro = false;
+              alert('⏰ PRO 이용권 기간이 만료되어 일반 회원(일 3회 제한)으로 변경되었습니다.');
+            } else {
+              setIsPro(true);
+              currentIsPro = true;
+            }
           } else {
-            setIsPro(true);
-            currentIsPro = true;
+            setIsPro(profileData.is_pro);
+            currentIsPro = profileData.is_pro;
           }
-        } else {
-          setIsPro(profileData.is_pro);
-          currentIsPro = profileData.is_pro;
         }
+      } catch (e) {
+        console.warn('Profile PRO check warning:', e);
       }
-    } catch (e) {
-      console.warn('Profile PRO check warning:', e);
     }
 
     // [P0-FIX] 무료 한도 사전 체크 제거 → 서버(api/index.ts)에서 단일 검증
@@ -518,6 +533,9 @@ export default function App() {
       // 로컬 카운트도 동기화 (localStorage fallback용)
       if (!currentIsPro) {
         incrementFreeUsage();
+      }
+      if (!user) {
+        incrementGuestTrialUsed();
       }
 
       // 결과 섹션으로 스크롤
@@ -675,6 +693,7 @@ export default function App() {
             result={result}
             request={request}
             isPro={isPro}
+            user={user}
             onOpenPayment={() => {
               if (!user) {
                 alert('PRO 요금제를 활성화하려면 먼저 로그인이 필요합니다.');
@@ -683,6 +702,7 @@ export default function App() {
                 setIsPaymentOpen(true);
               }
             }}
+            onOpenAuth={() => setIsAuthOpen(true)}
             onReEdit={() => {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}

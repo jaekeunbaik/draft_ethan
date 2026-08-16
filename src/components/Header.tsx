@@ -196,10 +196,13 @@ export const Header: React.FC<HeaderProps> = ({
           ) : (
             <button
               onClick={onOpenAuth}
-              className="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3.5 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer shadow-sm active:scale-95"
+              className="text-xs font-extrabold text-[#191919] bg-[#FEE500] hover:bg-[#FDD835] border border-yellow-400/80 px-3 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm shadow-yellow-500/10 active:scale-95"
             >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>로그인</span>
+              <svg className="w-4 h-4 fill-[#191919] shrink-0" viewBox="0 0 24 24">
+                <path d="M12 3c-5.52 0-10 3.58-10 8 0 2.92 1.92 5.48 4.8 6.92-.12.44-.8 2.88-.84 3.08-.04.2.08.28.24.16.12-.08 2.04-1.4 2.88-1.96.96.24 2 .36 2.92.36 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+              </svg>
+              <span>1초 카카오 시작</span>
+              <span className="hidden sm:inline-block text-[10px] bg-black/10 px-1.5 py-0.5 rounded font-bold">무료 3회</span>
             </button>
           )}
         </div>

@@ -118,33 +118,40 @@ export const FormSection: React.FC<FormSectionProps> = ({
   return (
     <div id="form-section" className="bg-white border border-gray-200/80 rounded-2xl p-5 sm:p-7 shadow-sm text-gray-800">
       {/* Header bar inside form */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-gray-100 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-gray-100 gap-4">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2.5 py-0.5 rounded-full shadow-sm animate-pulse">
+              🎁 무로그인 1회 즉시 무료 체험 가능
+            </span>
+          </div>
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <FileText className="w-5 h-5 text-indigo-600" />
-            자소서 작성 및 첨삭 설정
+            자소서 작성 및 AI 팩폭 첨삭
           </h2>
           <p className="text-xs text-gray-500 mt-1">
-            희망 직무와 기존 자소서 내용을 입력하시면 AI가 문장력과 직무 적합성을 다듬어 드립니다.
+            희망 직무와 자소서를 입력하시면 대기업 채용담당자 관점에서 3초 만에 팩폭 교정해 드립니다.
           </p>
         </div>
 
         {/* Preset Sample Loaders */}
-        <div className="flex items-center space-x-2 self-start sm:self-auto">
-          <div className="dropdown relative">
-            <span className="text-xs text-gray-400 mr-2 font-medium">샘플 불러오기:</span>
-            <div className="inline-flex flex-wrap gap-1.5">
-              {SAMPLE_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => handleSelectSample(preset)}
-                  className="px-2.5 py-1 text-xs rounded-lg bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 border border-gray-200 hover:border-indigo-200 transition font-medium cursor-pointer"
-                >
-                  {preset.title.split(' ')[0]}
-                </button>
-              ))}
-            </div>
+        <div className="flex flex-col sm:items-end gap-1.5 self-start sm:self-auto bg-indigo-50/60 p-3 rounded-xl border border-indigo-100/80">
+          <div className="flex items-center gap-1 text-xs text-indigo-950 font-bold">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600 animate-spin" style={{ animationDuration: '4s' }} />
+            <span>자소서가 없다면? 1초 샘플 채우기:</span>
+          </div>
+          <div className="inline-flex flex-wrap gap-1.5">
+            {SAMPLE_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => handleSelectSample(preset)}
+                className="px-2.5 py-1.5 text-xs rounded-lg bg-white hover:bg-indigo-600 text-gray-700 hover:text-white border border-indigo-200/80 hover:border-indigo-600 shadow-sm transition transform hover:scale-105 active:scale-95 font-bold cursor-pointer flex items-center gap-1"
+              >
+                <span>⚡</span>
+                <span>{preset.title.split(' ')[0]}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
