@@ -161,6 +161,25 @@ export default function App() {
                 .eq('id', user.id);
             }
           }
+          // 재접속 시 이전 신청 건 승인 확인 팝업 처리
+          try {
+            const pendingDeposit = localStorage.getItem(`dethan_deposit_pending_${user.id}`);
+            const lastKnownPro = localStorage.getItem(`dethan_last_known_pro_${user.id}`);
+
+            if (activePro) {
+              if (pendingDeposit === 'true' || lastKnownPro === 'false') {
+                localStorage.removeItem(`dethan_deposit_pending_${user.id}`);
+                localStorage.setItem(`dethan_last_known_pro_${user.id}`, 'true');
+                setTimeout(() => {
+                  alert('🎉 축하합니다! 관리자 입금 확인이 완료되어 PRO 무제한 첨삭 기능이 활성화되었습니다!\n(30일간 무제한 이용 가능)');
+                }, 300);
+              }
+              localStorage.setItem(`dethan_last_known_pro_${user.id}`, 'true');
+            } else {
+              localStorage.setItem(`dethan_last_known_pro_${user.id}`, 'false');
+            }
+          } catch (e) {}
+
           setIsPro(activePro);
           setProExpiresAt(activePro ? activeExp : null);
           setIsAdmin((data as any).is_admin === true || checkIsAdminUser(user));
@@ -192,6 +211,10 @@ export default function App() {
             const nextExp = payload.new.pro_expires_at || null;
             setIsPro((prevPro) => {
               if (!prevPro && nextPro) {
+                try {
+                  localStorage.removeItem(`dethan_deposit_pending_${user.id}`);
+                  localStorage.setItem(`dethan_last_known_pro_${user.id}`, 'true');
+                } catch (e) {}
                 alert('🎉 축하합니다! 관리자 입금 확인이 완료되어 PRO 무제한 첨삭 기능이 즉시 활성화되었습니다!');
               }
               return nextPro;

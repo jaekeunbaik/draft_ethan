@@ -168,7 +168,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
         console.warn('Failed to send Discord notification:', notifyErr);
       }
 
-      alert('👍 입금 확인 요청이 접수되었습니다!\n백재근 대표님이 입금 확인 즉시 등급을 활성화해 드립니다.');
+      // Store pending deposit flag in localStorage for welcome alert on next return
+      try {
+        localStorage.setItem(`dethan_deposit_pending_${user.id}`, 'true');
+      } catch (e) {}
+
+      alert('👍 입금 확인 요청이 접수되었습니다!\n대표님이 입금 확인 즉시 등급을 활성화해 드립니다.');
       onClose();
     } catch (err: any) {
       console.error('Failed to submit deposit request:', err);
