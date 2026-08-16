@@ -82,17 +82,19 @@ export interface VisitorInfo {
 }
 
 /**
- * 1. notifyVisitor(): 유저 방문 시 알림 (로그인 유저 닉네임/등급 표기, 3중 락으로 중복 방지, 스마트 봇 감지)
+ * 1. notifyVisitor(): 유저 방문 시 알림 (로그인 유저 닉네임/등급 표기, 동기 락으로 중복 100% 방지, 스마트 봇 감지)
  */
 export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> => {
   const now = Date.now();
 
-  // 1단계: 메모리 락 (15초 쿨다운 및 동시 실행 방지)
-  if (isVisitorNotifying || now - lastVisitorNotifyTime < 15000) {
+  // 1단계: 메모리 즉시 락 (동시 호출 및 30초 쿨다운 원천 차단)
+  if (isVisitorNotifying || now - lastVisitorNotifyTime < 30000) {
     return false;
   }
+  isVisitorNotifying = true;
+  lastVisitorNotifyTime = now;
 
-  // 2단계: 브라우저 세션/로컬 스토리지 락 (동일 브라우저 세션에서 5분 이내 중복 전송 원천 차단)
+  // 2단계: 브라우저 세션/로컬 스토리지 즉시 락 (동일 브라우저 세션에서 5분 이내 중복 전송 원천 차단)
   if (typeof window !== 'undefined') {
     try {
       const sessionLock = window.sessionStorage?.getItem(VISITOR_DEDUPE_KEY);
@@ -102,6 +104,7 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
         localLock ? parseInt(localLock, 10) : 0
       );
       if (lastTs && now - lastTs < 300000) { // 5분(300,000ms) 이내 중복 알림 차단
+        isVisitorNotifying = false;
         return false;
       }
       window.sessionStorage?.setItem(VISITOR_DEDUPE_KEY, String(now));
@@ -111,16 +114,31 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
     }
   }
 
-  isVisitorNotifying = true;
-  lastVisitorNotifyTime = now;
-
   try {
     const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
     const rawReferrer = typeof document !== 'undefined' ? (document.referrer || '') : '';
 
-    // 유저 세션 확인 (파라미터 우선, 없으면 Supabase 세션 조회)
+    // 유저 세션 확인 (파라미터 우선 -> localStorage Supabase 토큰 동기 파싱 -> getSession 조회)
     let currentUser = userInfo?.user;
-    let isPro = userInfo?.isPro;
+    let isPro = userInfo?.isPro ?? false;
+
+    if (!currentUser && typeof window !== 'undefined') {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed?.user) {
+                currentUser = parsed.user;
+                break;
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    }
 
     if (!currentUser && typeof window !== 'undefined') {
       try {
@@ -128,9 +146,7 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
         if (sessionData?.session?.user) {
           currentUser = sessionData.session.user;
         }
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
 
     // 1. 봇 / 로그인 회원 / 비회원 판별
@@ -145,7 +161,7 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
         currentUser.user_metadata?.nickname ||
         currentUser.user_metadata?.user_name;
 
-      const email = currentUser.email;
+      const email = currentUser.email || '';
       const nickname = kakaoNickname || (email ? email.split('@')[0] : '카카오 회원');
       const proBadge = isPro ? '👑 PRO 회원' : '⭐ 일반 회원';
       visitorType = `👤 ${nickname}님 (${proBadge})`;
