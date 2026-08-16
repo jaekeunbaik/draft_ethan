@@ -352,12 +352,17 @@ ${content}
         console.warn('[history_items] SUPABASE_SERVICE_ROLE_KEY 미설정. 클라이언트 저장으로 fallback.');
         parsedResult._historyId = historyId;
         parsedResult._clientSave = true; // 클라이언트가 직접 저장하도록 신호
-        parsedResult._historyPayload = historyPayload;
+        // [순환 참조 방지] parsedResult 안에 parsedResult(result_data)를 넣지 않음
+        parsedResult._historyPayload = {
+          id: historyId,
+          job_title: jobTitle,
+          company_name: companyName || null,
+          request_data: { question, content, jobTitle, companyName, tone, focusPoints, targetCharCount },
+          user_id: userId || null,
+        };
       }
     } catch (histErr) {
       console.warn('history_items insert exception:', histErr);
-      // 클라이언트 저장 fallback
-      parsedResult._clientSave = true;
     }
 
     return res.json(parsedResult);

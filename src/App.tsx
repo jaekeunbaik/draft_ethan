@@ -486,8 +486,10 @@ export default function App() {
       // 유저 세션이 있으므로 RLS "Users can manage their own history items" 정책 통과 가능
       if (data._clientSave && data._historyPayload && user) {
         try {
-          const payload = { ...data._historyPayload };
-          // 내부 플래그 필드 제거 (DB 컬럼 없음)
+          const payload = {
+            ...data._historyPayload,
+            result_data: data,
+          };
           delete payload._clientSave;
           delete payload._historyPayload;
           await supabase.from('history_items').insert([payload]);
