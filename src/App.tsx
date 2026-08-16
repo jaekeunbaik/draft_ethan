@@ -461,7 +461,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...req,
-          userId: user.id,
+          userId: user ? user.id : null,
           // isPro 제거: 클라이언트 값을 서버에 전달하지 않음 (위조 방지)
         }),
       });
@@ -482,12 +482,12 @@ export default function App() {
       // 서버에서 반환된 _historyId로 로컬 히스토리와 DB 동기화
       saveToHistory(req, data, data._historyId);
 
-      // [FIX] 서버에 SUPABASE_SERVICE_ROLE_KEY가 없으면 클라이언트(유저 세션)로 직접 저장
-      // 유저 세션이 있으므로 RLS "Users can manage their own history items" 정책 통과 가능
-      if (data._clientSave && data._historyPayload && user) {
+      // [FIX] 서버에 SUPABASE_SERVICE_ROLE_KEY가 없으면 클라이언트(유저 세션/게스트)로 직접 저장
+      if (data._clientSave && data._historyPayload) {
         try {
           const payload = {
             ...data._historyPayload,
+            user_id: user ? user.id : null,
             result_data: data,
           };
           delete payload._clientSave;

@@ -298,9 +298,10 @@ ${content}
 
       // Save full request + result to history_items (서버 서비스 키로 직접 저장 → RLS 우회)
       try {
+        const hasServiceKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
         const supabaseClient = getSupabaseClient();
         const { userId } = req.body;
-        const historyId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const historyId = crypto.randomUUID();
         const historyPayload: any = {
           id: historyId,
           job_title: jobTitle,
@@ -310,11 +311,24 @@ ${content}
         };
         if (userId) historyPayload.user_id = userId;
 
-        const { error: histErr } = await supabaseClient.from('history_items').insert([historyPayload]);
-        if (histErr) {
-          console.warn('Logging to history_items failed:', histErr.message);
+        if (hasServiceKey) {
+          const { error: histErr } = await supabaseClient.from('history_items').insert([historyPayload]);
+          if (histErr) {
+            console.warn('Logging to history_items failed:', histErr.message);
+          } else {
+            console.log('Successfully saved to history_items:', historyId);
+            parsedResult._historyId = historyId;
+          }
         } else {
-          console.log('Successfully saved to history_items:', historyId);
+          parsedResult._historyId = historyId;
+          parsedResult._clientSave = true;
+          parsedResult._historyPayload = {
+            id: historyId,
+            job_title: jobTitle,
+            company_name: companyName || null,
+            request_data: { question, content, jobTitle, companyName, tone, focusPoints, targetCharCount },
+            user_id: userId || null,
+          };
         }
       } catch (histErr) {
         console.warn('history_items insert exception:', histErr);

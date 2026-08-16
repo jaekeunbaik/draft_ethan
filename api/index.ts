@@ -3,6 +3,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -328,7 +329,7 @@ ${content}
 
     try {
       const supabaseClient = getSupabaseClient();
-      const historyId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const historyId = crypto.randomUUID();
       const historyPayload: any = {
         id: historyId,
         job_title: jobTitle,
