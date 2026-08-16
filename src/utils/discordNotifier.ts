@@ -163,6 +163,31 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
 
       const email = currentUser.email || '';
       const nickname = kakaoNickname || (email ? email.split('@')[0] : '카카오 회원');
+
+      // PRO 여부 정밀 확인 (localStorage 캐시 + Supabase profiles 테이블 조회)
+      if (!isPro && typeof window !== 'undefined') {
+        const cachedPro = localStorage.getItem(`dethan_is_pro_${currentUser.id}`);
+        if (cachedPro === 'true') {
+          isPro = true;
+        } else {
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('is_pro, pro_expires_at')
+              .eq('id', currentUser.id)
+              .single();
+            if (profile?.is_pro) {
+              if (!profile.pro_expires_at || new Date(profile.pro_expires_at) > new Date()) {
+                isPro = true;
+                localStorage.setItem(`dethan_is_pro_${currentUser.id}`, 'true');
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+
       const proBadge = isPro ? '👑 PRO 회원' : '⭐ 일반 회원';
       visitorType = `👤 ${nickname}님 (${proBadge})`;
     } else if (/Mediapartners-Google/i.test(userAgent)) {
@@ -224,8 +249,9 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
   else if (/chrome|crios/i.test(userAgent)) browserName = '🔴 Chrome';
   else if (/safari/i.test(userAgent) && !/chrome/i.test(userAgent)) browserName = '🧭 Safari';
 
-  const embedColor = isBot ? 0x95a5a6 : 0x6366f1; // 봇은 차분한 그레이, 유저는 선명한 인디고
-  const statusEmoji = isBot ? '🤖' : '✨';
+  const isProUser = visitorType.includes('PRO');
+  const embedColor = isBot ? 0x95a5a6 : isProUser ? 0xf59e0b : 0x6366f1; // 봇은 차분한 그레이, PRO는 럭셔리 골드, 일반은 인디고
+  const statusEmoji = isBot ? '🤖' : isProUser ? '👑' : '✨';
 
     return await sendDiscordEmbed({
       title: `${statusEmoji} [Dethan 디든] 실시간 방문 알림 대시보드`,
