@@ -267,9 +267,26 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
   else if (/chrome|crios/i.test(userAgent)) browserName = '🔴 Chrome';
   else if (/safari/i.test(userAgent) && !/chrome/i.test(userAgent)) browserName = '🧭 Safari';
 
-  const isProUser = visitorType.includes('PRO');
-  const embedColor = isBot ? 0x95a5a6 : isProUser ? 0xf59e0b : 0x6366f1; // 봇은 차분한 그레이, PRO는 럭셔리 골드, 일반은 인디고
-  const statusEmoji = isBot ? '🤖' : isProUser ? '👑' : '✨';
+    // IP 주소 비동기 조회 (Fast timeout 1.5s)
+    let clientIp = '확인 불가 / 비공개';
+    try {
+      const ipController = new AbortController();
+      const timeoutId = setTimeout(() => ipController.abort(), 1500);
+      const ipRes = await fetch('https://api.ipify.org?format=json', { signal: ipController.signal });
+      clearTimeout(timeoutId);
+      if (ipRes.ok) {
+        const ipData = await ipRes.json();
+        if (ipData.ip) {
+          clientIp = ipData.ip;
+        }
+      }
+    } catch (e) {
+      clientIp = '확인 불가 / VPN';
+    }
+
+    const isProUser = visitorType.includes('PRO');
+    const embedColor = isBot ? 0x95a5a6 : isProUser ? 0xf59e0b : 0x6366f1; // 봇은 차분한 그레이, PRO는 럭셔리 골드, 일반은 인디고
+    const statusEmoji = isBot ? '🤖' : isProUser ? '👑' : '✨';
 
     return await sendDiscordEmbed({
       title: `${statusEmoji} [Dethan 디든] 실시간 방문 알림 대시보드`,
@@ -277,9 +294,10 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
       fields: [
         { name: '📊 방문자 분류', value: `**${visitorType}**`, inline: true },
         { name: '🔗 유입 채널', value: `**${channelName}**`, inline: true },
+        { name: '🌐 접속 IP', value: `\`${clientIp}\``, inline: true },
         { name: '📱 기기 및 OS', value: osName, inline: true },
         { name: '🌐 브라우저', value: browserName, inline: true },
-        { name: '🕒 접속 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
+        { name: '🕒 접속 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: true },
       ],
       footerText: isBot ? 'Dethan (디든) 봇 트래픽 모니터링' : 'Dethan (디든) 실시간 유저 모니터링',
     });
