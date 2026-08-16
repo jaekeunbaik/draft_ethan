@@ -73,7 +73,7 @@ const sendDiscordEmbed = async (options: SendDiscordEmbedOptions): Promise<boole
 let lastVisitorNotifyTime = 0;
 
 /**
- * 1. notifyVisitor(): 유저 방문 시 알림 (타임스탬프 및 접속 디바이스/브라우저 정보 포함)
+ * 1. notifyVisitor(): 유저 방문 시 알림 (스마트 봇 감지, SNS 유입 채널 분석, 대시보드 스타일 포맷)
  */
 export const notifyVisitor = async (): Promise<boolean> => {
   const now = Date.now();
@@ -83,29 +83,84 @@ export const notifyVisitor = async (): Promise<boolean> => {
   }
   lastVisitorNotifyTime = now;
   const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
-  const referrer = typeof document !== 'undefined' ? (document.referrer || 'Direct Access / Bookmark') : 'Direct Access';
+  const rawReferrer = typeof document !== 'undefined' ? (document.referrer || '') : '';
 
-  let deviceType = '🖥️ PC (Desktop)';
-  if (/mobile/i.test(userAgent)) deviceType = '📱 Mobile';
-  else if (/tablet|ipad/i.test(userAgent)) deviceType = '📱 Tablet';
+  // 1. 봇 / 크롤러 판별
+  let isBot = false;
+  let visitorType = '👤 일반 방문자 (Real Human)';
+  if (/Mediapartners-Google/i.test(userAgent)) {
+    isBot = true;
+    visitorType = '🤖 Google 애드센스/광고 분석 봇';
+  } else if (/Googlebot/i.test(userAgent)) {
+    isBot = true;
+    visitorType = '🤖 Google 검색 색인 크롤러';
+  } else if (/bingbot/i.test(userAgent)) {
+    isBot = true;
+    visitorType = '🤖 Bing 검색 크롤러';
+  } else if (/facebookexternalhit|Threads/i.test(userAgent)) {
+    isBot = true;
+    visitorType = '🤖 Meta / Threads 링크 미리보기 봇';
+  } else if (/kakaotalk-scrap/i.test(userAgent)) {
+    isBot = true;
+    visitorType = '🤖 카카오톡 링크 미리보기 봇';
+  } else if (/Yeti|NaverBot/i.test(userAgent)) {
+    isBot = true;
+    visitorType = '🤖 네이버 검색 크롤러';
+  } else if (/bot|crawler|spider|crawling/i.test(userAgent)) {
+    isBot = true;
+    visitorType = '🤖 웹 크롤러 / 봇';
+  }
 
-  let browserName = '🌐 기타 브라우저';
-  if (/kakao/i.test(userAgent)) browserName = '🟡 KakaoTalk InApp Browser';
+  // 2. 유입 채널 (Referrer) 스마트 분석
+  let channelName = '⚡ 직접 접속 / 북마크 / 주소창 입력';
+  if (/instagram\.com/i.test(rawReferrer)) {
+    channelName = '📸 인스타그램 (Instagram 프로필/링크)';
+  } else if (/threads\.net/i.test(rawReferrer)) {
+    channelName = '💬 스레드 (Threads 피드/프로필)';
+  } else if (/youtube\.com|youtu\.be/i.test(rawReferrer)) {
+    channelName = '🎬 유튜브 (YouTube 쇼츠/설명란)';
+  } else if (/myti/i.test(rawReferrer)) {
+    channelName = '🎯 MYTI 페르소나 테스트 ➔ 디든 연결 유입';
+  } else if (/google\./i.test(rawReferrer)) {
+    channelName = '🔍 Google 검색 유입';
+  } else if (/naver\./i.test(rawReferrer)) {
+    channelName = '🟢 네이버 검색 유입';
+  } else if (/kakao/i.test(rawReferrer)) {
+    channelName = '🟡 카카오톡 공유 링크 유입';
+  } else if (rawReferrer) {
+    channelName = `🌐 외부 웹사이트 (${rawReferrer.substring(0, 50)})`;
+  }
+
+  // 3. 기기 & OS 스마트 파싱
+  let osName = '기타 OS';
+  if (/iPhone/i.test(userAgent)) osName = 'Apple iPhone (iOS)';
+  else if (/iPad/i.test(userAgent)) osName = 'Apple iPad (iPadOS)';
+  else if (/Android/i.test(userAgent)) osName = 'Android 모바일';
+  else if (/Macintosh|Mac OS/i.test(userAgent)) osName = 'Mac (macOS)';
+  else if (/Windows/i.test(userAgent)) osName = 'Windows PC';
+
+  // 4. 브라우저 파싱
+  let browserName = '기타 브라우저';
+  if (/kakao/i.test(userAgent)) browserName = '🟡 카카오톡 인앱';
+  else if (/instagram/i.test(userAgent)) browserName = '📸 인스타 인앱';
   else if (/edg/i.test(userAgent)) browserName = '🟦 Edge';
-  else if (/chrome/i.test(userAgent)) browserName = '🔴 Chrome';
-  else if (/safari/i.test(userAgent)) browserName = '🧭 Safari';
+  else if (/chrome|crios/i.test(userAgent)) browserName = '🔴 Chrome';
+  else if (/safari/i.test(userAgent) && !/chrome/i.test(userAgent)) browserName = '🧭 Safari';
+
+  const embedColor = isBot ? 0x95a5a6 : 0x6366f1; // 봇은 차분한 그레이, 유저는 선명한 인디고
+  const statusEmoji = isBot ? '🤖' : '✨';
 
   return sendDiscordEmbed({
-    title: '👀 [Dethan 디든] 새로운 유저 방문 접속!',
-    color: 0x3498db, // Blue
+    title: `${statusEmoji} [Dethan 디든] 실시간 방문 알림 대시보드`,
+    color: embedColor,
     fields: [
-      { name: '🔗 유입 경로 (Referrer)', value: referrer, inline: false },
-      { name: '🌐 접속 기기', value: deviceType, inline: true },
+      { name: '📊 방문자 분류', value: `**${visitorType}**`, inline: true },
+      { name: '🔗 유입 채널', value: `**${channelName}**`, inline: true },
+      { name: '📱 기기 및 OS', value: osName, inline: true },
       { name: '🌐 브라우저', value: browserName, inline: true },
       { name: '🕒 접속 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
-      { name: '📱 User-Agent', value: `\`\`\`${userAgent.substring(0, 150)}\`\`\``, inline: false },
     ],
-    footerText: 'Dethan (디든) 방문자 실시간 모니터링',
+    footerText: isBot ? 'Dethan (디든) 봇 트래픽 모니터링' : 'Dethan (디든) 실시간 유저 모니터링',
   });
 };
 
