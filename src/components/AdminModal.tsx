@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Search, Shield, RefreshCw, UserCheck, AlertOctagon, Clock, CheckCircle } from 'lucide-react';
+import { X, Search, Shield, RefreshCw, UserCheck, AlertOctagon, Clock, CheckCircle, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AdminModalProps {
@@ -42,7 +42,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [historyItems, setHistoryItems] = useState<AdminHistoryItem[]>([]);
   const [activeTab, setActiveTab] = useState<'requests' | 'profiles' | 'history'>('requests');
-  const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'opened'>('all');
+  const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'opened'>('pending');
+  const [dateRangeFilter, setDateRangeFilter] = useState<'3d' | '7d' | '30d' | 'all'>('7d');
   const [searchQuery, setSearchQuery] = useState('');
   
   const [isLoading, setIsLoading] = useState(false);
@@ -302,6 +303,17 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     );
   });
 
+  // Helper: check if date is within selected range
+  const isWithinDateRange = (dateStr?: string, range: '3d' | '7d' | '30d' | 'all' = '7d') => {
+    if (range === 'all' || !dateStr) return true;
+    const itemTime = new Date(dateStr).getTime();
+    if (isNaN(itemTime)) return true;
+    const now = Date.now();
+    const daysMap = { '3d': 3, '7d': 7, '30d': 30 };
+    const msLimit = daysMap[range] * 24 * 60 * 60 * 1000;
+    return now - itemTime <= msLimit;
+  };
+
   // Deduplicate 'opened' requests so only the latest 'opened' entry per user is retained
   const seenOpenedUserIds = new Set<string>();
   const deduplicatedRequests = paymentRequests.filter((req) => {
@@ -311,12 +323,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     return true;
   });
 
+  // Date filtered requests: 'pending' (미승인)은 항상 표시, 나머지는 기간 필터 적용
+  const dateFilteredRequests = deduplicatedRequests.filter((req) => {
+    if (req.status === 'pending') return true; // 미승인 입금대기는 기간과 무관하게 항상 노출!
+    return isWithinDateRange(req.created_at, dateRangeFilter);
+  });
+
   const pendingRequestsCount = paymentRequests.filter((r) => r.status === 'pending').length;
-  const approvedRequestsCount = paymentRequests.filter((r) => r.status === 'approved').length;
-  const openedRequestsCount = deduplicatedRequests.filter((r) => r.status === 'opened').length;
+  const approvedRequestsCount = dateFilteredRequests.filter((r) => r.status === 'approved').length;
+  const openedRequestsCount = dateFilteredRequests.filter((r) => r.status === 'opened').length;
 
   // Filters payment requests by sub-status filter + search query
-  const filteredRequests = deduplicatedRequests
+  const filteredRequests = dateFilteredRequests
     .filter((req) => {
       if (requestStatusFilter === 'pending') return req.status === 'pending';
       if (requestStatusFilter === 'approved') return req.status === 'approved';
@@ -444,53 +462,93 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
 
         {/* Status Filter Chips for Payment Requests */}
         {activeTab === 'requests' && (
-          <div className="px-4 py-2 bg-gray-50/80 border-b border-gray-100 flex items-center gap-1.5 overflow-x-auto shrink-0">
-            <span className="text-[11px] font-bold text-gray-400 mr-1 shrink-0">상태별 필터:</span>
-            
-            <button
-              onClick={() => setRequestStatusFilter('all')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 cursor-pointer ${
-                requestStatusFilter === 'all'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
-              }`}
-            >
-              전체 보기 ({deduplicatedRequests.length})
-            </button>
+          <div className="bg-gray-50/80 border-b border-gray-100 flex flex-col gap-1.5 px-4 py-2 shrink-0">
+            {/* Row 1: Status Filter */}
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              <span className="text-[11px] font-bold text-gray-400 mr-1 shrink-0">상태별 필터:</span>
 
-            <button
-              onClick={() => setRequestStatusFilter('pending')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                requestStatusFilter === 'pending'
-                  ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-200'
-                  : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
-              <span>⚡ 미승인 입금대기 ({pendingRequestsCount})</span>
-            </button>
+              {/* 1. 미승인 입금대기 (최우선 기본값) */}
+              <button
+                onClick={() => setRequestStatusFilter('pending')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  requestStatusFilter === 'pending'
+                    ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-200'
+                    : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${pendingRequestsCount > 0 ? 'bg-rose-500 animate-ping' : 'bg-rose-400'}`} />
+                <span>⚡ 미승인 입금대기 ({pendingRequestsCount})</span>
+              </button>
 
-            <button
-              onClick={() => setRequestStatusFilter('approved')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                requestStatusFilter === 'approved'
-                  ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-200'
-                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-              }`}
-            >
-              <span>✅ 승인 완료 ({approvedRequestsCount})</span>
-            </button>
+              {/* 2. 승인 완료 */}
+              <button
+                onClick={() => setRequestStatusFilter('approved')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  requestStatusFilter === 'approved'
+                    ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-200'
+                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                }`}
+              >
+                <span>✅ 승인 완료 ({approvedRequestsCount})</span>
+              </button>
 
-            <button
-              onClick={() => setRequestStatusFilter('opened')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                requestStatusFilter === 'opened'
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
-              }`}
-            >
-              <span>⏳ 결제창 열람 ({openedRequestsCount})</span>
-            </button>
+              {/* 3. 결제창 열람 (이탈 리드) */}
+              <button
+                onClick={() => setRequestStatusFilter('opened')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  requestStatusFilter === 'opened'
+                    ? 'bg-amber-600 text-white shadow-xs ring-2 ring-amber-200'
+                    : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                <span>⏳ 결제창 열람 ({openedRequestsCount})</span>
+              </button>
+
+              {/* 4. 전체 보기 */}
+              <button
+                onClick={() => setRequestStatusFilter('all')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 cursor-pointer ${
+                  requestStatusFilter === 'all'
+                    ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-200'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                전체 보기 ({filteredRequests.length})
+              </button>
+            </div>
+
+            {/* Row 2: Date Range Filter */}
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-200/50 flex-wrap">
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1 shrink-0">
+                  <Calendar className="w-3 h-3 text-gray-400" />
+                  <span>노출 기간:</span>
+                </span>
+
+                {[
+                  { key: '3d', label: '최근 3일' },
+                  { key: '7d', label: '최근 7일' },
+                  { key: '30d', label: '최근 30일' },
+                  { key: 'all', label: '전체 기간' },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setDateRangeFilter(item.key as any)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition shrink-0 cursor-pointer ${
+                      dateRangeFilter === item.key
+                        ? 'bg-gray-800 text-white font-bold shadow-2xs'
+                        : 'bg-white text-gray-500 border border-gray-200/80 hover:bg-gray-100'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              <span className="text-[10px] text-indigo-600 font-medium shrink-0">
+                ✨ 미승인 입금대기는 기간과 무관하게 항상 표시됩니다
+              </span>
+            </div>
           </div>
         )}
 
