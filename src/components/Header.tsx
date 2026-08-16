@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="w-full border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
         {/* 로고 영역 */}
         <div 
           onClick={handleLogoClick}
@@ -79,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* 상단 액션/상태 */}
-        <div className="flex items-center gap-2 sm:gap-3.5 shrink-0 whitespace-nowrap">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 whitespace-nowrap">
           {isAdmin && onOpenAdmin && (
             <button
               onClick={onOpenAdmin}
@@ -89,11 +89,6 @@ export const Header: React.FC<HeaderProps> = ({
               <span>관리자</span>
             </button>
           )}
-
-          <span className="hidden lg:inline-flex items-center text-xs text-gray-500 gap-1.5 font-medium whitespace-nowrap shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Gemini 3.5 Active
-          </span>
 
           <a
             href="https://de-cringe.vercel.app"
@@ -108,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({
           {onOpenCoffee && (
             <button
               onClick={onOpenCoffee}
-              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-900 bg-amber-100/90 hover:bg-amber-200 border border-amber-300 px-2.5 py-1 rounded-lg transition shadow-xs cursor-pointer animate-pulse whitespace-nowrap shrink-0"
+              className="hidden sm:inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-900 bg-amber-100/90 hover:bg-amber-200 border border-amber-300 px-2.5 py-1 rounded-lg transition shadow-xs cursor-pointer animate-pulse whitespace-nowrap shrink-0"
               title="서류/면접 합격하면 커피 한 잔 쏘기!"
             >
               ☕ 합격 턱 쏘기
@@ -138,9 +133,9 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* 로그인 세션 연동 */}
           {user ? (
-            <div className="flex items-center gap-2 sm:gap-3 border-l border-gray-150 pl-2.5 sm:pl-3.5 shrink-0 whitespace-nowrap">
-              {/* Profile info container */}
-              <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
+            <div className="flex items-center gap-2 sm:gap-2.5 border-l border-gray-150 pl-2 sm:pl-3 shrink-0 whitespace-nowrap">
+              {/* Profile info container (아바타 + [이름 / 하단 PRO 뱃지] 2단 구조) */}
+              <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
@@ -153,30 +148,30 @@ export const Header: React.FC<HeaderProps> = ({
                     <User className="w-3.5 h-3.5 text-indigo-600" />
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
-                  <span className="text-xs font-semibold text-gray-700 max-w-[80px] sm:max-w-[100px] truncate whitespace-nowrap" title={displayName}>
+
+                {/* 이름 및 하단 등급 뱃지 (Vertical Stack) */}
+                <div className="flex flex-col items-start justify-center leading-none">
+                  <span className="text-xs font-bold text-gray-800 max-w-[70px] sm:max-w-[90px] truncate whitespace-nowrap leading-none mb-0.5" title={displayName}>
                     {displayName}
                   </span>
                   
                   {isPro ? (
                     <button
                       onClick={onOpenPayment}
-                      className="text-xs font-extrabold text-amber-800 bg-amber-50 hover:bg-amber-100/80 px-2 py-1 rounded-lg border border-amber-250 hover:border-amber-400 flex items-center gap-1 cursor-pointer transition select-none shrink-0 shadow-2xs active:scale-95 group whitespace-nowrap"
-                      title={formattedExpiresDate ? `PRO 이용권 만료 예정일: ${formattedExpiresDate} (클릭 시 이용권 추가 연장)` : 'PRO 이용권 추가 연장하기'}
+                      className="text-[9px] font-extrabold text-amber-900 bg-amber-100/90 hover:bg-amber-200 px-1.5 py-0.5 rounded border border-amber-300 flex items-center gap-0.5 cursor-pointer transition select-none shrink-0 leading-none"
+                      title={formattedExpiresDate ? `PRO 이용권 만료 예정일: ${formattedExpiresDate}` : 'PRO 이용권 연장'}
                     >
-                      <span className="flex items-center gap-0.5 text-amber-700 whitespace-nowrap">
-                        <span>👑</span> PRO
-                      </span>
+                      <span className="text-amber-700 font-black">👑 PRO</span>
                       {daysLeft !== null && (
-                        <span className="bg-amber-200/70 group-hover:bg-amber-300/80 text-amber-950 px-1.5 py-0.5 rounded text-[10px] font-bold leading-none tracking-tight whitespace-nowrap">
-                          {daysLeft > 0 ? `${daysLeft}일 남음` : '오늘 만료'}
+                        <span className="text-amber-950 font-bold">
+                          {daysLeft > 0 ? `${daysLeft}일` : '오늘'}
                         </span>
                       )}
                     </button>
                   ) : (
                     <button
                       onClick={onOpenPayment}
-                      className="text-[9px] font-extrabold text-indigo-650 hover:text-indigo-750 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded flex items-center shrink-0 cursor-pointer transition select-none tracking-tight leading-none hover:bg-indigo-100 whitespace-nowrap"
+                      className="text-[8px] font-extrabold text-indigo-650 hover:text-indigo-750 bg-indigo-50 border border-indigo-100 px-1 py-0.5 rounded flex items-center shrink-0 cursor-pointer transition select-none tracking-tight leading-none hover:bg-indigo-100 whitespace-nowrap"
                     >
                       🚀 UPGRADE
                     </button>
@@ -186,11 +181,11 @@ export const Header: React.FC<HeaderProps> = ({
               
               <button
                 onClick={onSignOut}
-                className="text-xs font-semibold text-gray-400 hover:text-rose-600 transition flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                className="text-xs font-semibold text-gray-400 hover:text-rose-600 transition flex items-center gap-0.5 cursor-pointer whitespace-nowrap shrink-0 ml-1"
                 title="로그아웃"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline whitespace-nowrap">로그아웃</span>
+                <span className="hidden sm:inline whitespace-nowrap text-xs">로그아웃</span>
               </button>
             </div>
           ) : (
