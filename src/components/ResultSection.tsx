@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { OgCardGenerator } from './OgCardGenerator';
 import { CorrectionResponse, CorrectionRequest } from '../types';
 import {
   Sparkles,
@@ -6,6 +7,7 @@ import {
   Check,
   Download,
   Share2,
+  ImageIcon,
   ThumbsUp,
   AlertTriangle,
   ArrowRight,
@@ -44,7 +46,8 @@ export const ResultSection: React.FC<ResultSectionProps> = ({
   onOpenAuth,
   onReEdit,
 }) => {
-  const [activeTab, setActiveTab] = useState<'text' | 'diff' | 'analysis' | 'keywords'>('text');
+  const [activeTab, setActiveTab] = useState<'text' | 'diff' | 'analysis' | 'keywords' | 'interview'>('text');
+  const [isOgCardOpen, setIsOgCardOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'corrected' | 'sideBySide'>('corrected');
   const [copiedText, setCopiedText] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -333,6 +336,7 @@ ${result.recommendedKeywords.join(', ')}
               { id: 'diff', label: '문장별 Before & After', icon: Split, badge: result.lineByLineDiff?.length },
               { id: 'analysis', label: '강점 및 보완점', icon: BarChart3 },
               { id: 'keywords', label: '직무 추천 어휘', icon: Tag, badge: result.recommendedKeywords?.length },
+              { id: 'interview', label: '면접 예상 질문', icon: MessageSquare, badge: result.interviewQuestions?.length },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -364,6 +368,15 @@ ${result.recommendedKeywords.join(', ')}
 
           {/* Export & Actions Toolbar */}
           <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => setIsOgCardOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 text-white text-xs font-bold transition cursor-pointer active:scale-95 shadow-sm"
+              title="점수 카드 이미지 생성 및 공유"
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+              <span>📸 점수 카드</span>
+            </button>
+
             <button
               onClick={handleKakaoReportShare}
               className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-[#FEE500] hover:bg-[#FDD800] text-[#191919] text-xs font-bold transition cursor-pointer active:scale-95 shadow-2xs"
@@ -663,9 +676,10 @@ ${result.recommendedKeywords.join(', ')}
           </div>
         </div>
 
-        {/* 🎙️ 1초 실전 압박 면접 대비 & 사이다 모범 답안 카드 */}
-        {result.interviewQuestions && result.interviewQuestions.length > 0 && (
-          <div className="mt-8 pt-6 border-t border-indigo-100 space-y-5">
+        {/* TAB CONTENT 5: 면접 예상 질문 & 사이다 모범 답안 (전용 탭) */}
+        {activeTab === 'interview' && (
+          <div className="space-y-5 animate-fade-in">
+            {/* 면접 탭 헤더 */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-gradient-to-r from-slate-900 to-indigo-950 p-4 rounded-2xl text-white shadow-lg border border-indigo-500/20">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-md">
@@ -674,111 +688,156 @@ ${result.recommendedKeywords.join(', ')}
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-amber-400 text-slate-950 uppercase tracking-wider">
-                      NEW 🔥
+                      실전 대비 🔥
                     </span>
                     <h3 className="text-base font-extrabold text-white">
-                      실전 압박 면접 대비 & 사이다 모범 답안
+                      면접 예상 질문 & 사이다 모범 답안
                     </h3>
                   </div>
                   <p className="text-xs text-indigo-200 mt-0.5">
-                    이 자소서를 본 대기업 면접관이 실제 던질 법한 날카로운 꼬리 질문과 모범 답안입니다.
+                    이 자소서를 본 대기업 면접관이 실제 던질 법한 날카로운 꼬리 질문과 합격 모범 답안입니다.
                   </p>
                 </div>
               </div>
+
+              {/* 면접 질문 전체 복사 버튼 */}
+              {isPro && result.interviewQuestions && result.interviewQuestions.length > 0 && (
+                <button
+                  onClick={() => {
+                    const allQA = (result.interviewQuestions || []).map((iq, i) =>
+                      `Q${i + 1}. ${iq.question}\n- 면접관 의도: ${iq.interviewerIntent}\n- 사이다 모범 답안: ${iq.modelAnswer}\n- 꿀팁: ${iq.keyTip}`
+                    ).join('\n\n');
+                    navigator.clipboard.writeText(allQA);
+                    alert('✨ 면접 예상 질문 & 모범 답안 전체가 클립보드에 복사되었습니다!');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition cursor-pointer flex items-center space-x-1.5 shrink-0 border border-white/20"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>전체 복사</span>
+                </button>
+              )}
             </div>
 
-            <div className="space-y-4">
-              {result.interviewQuestions.map((iq, idx) => (
-                <div
-                  key={idx}
-                  className="bg-slate-900/5 border border-indigo-100 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm hover:border-indigo-300 transition"
-                >
-                  {/* Q Header */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start space-x-3">
-                      <span className="px-2.5 py-1 bg-rose-500 text-white font-extrabold text-xs rounded-lg shrink-0 mt-0.5">
-                        질문 0{idx + 1}
-                      </span>
-                      <h4 className="text-sm sm:text-base font-extrabold text-gray-900 leading-snug">
-                        &quot;{iq.question}&quot;
-                      </h4>
+            {/* 면접 질문 카드 목록 */}
+            {result.interviewQuestions && result.interviewQuestions.length > 0 ? (
+              <div className="space-y-4">
+                {result.interviewQuestions.map((iq, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-slate-900/5 border border-indigo-100 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm hover:border-indigo-300 transition"
+                  >
+                    {/* Q Header */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start space-x-3">
+                        <span className="px-2.5 py-1 bg-rose-500 text-white font-extrabold text-xs rounded-lg shrink-0 mt-0.5">
+                          질문 0{idx + 1}
+                        </span>
+                        <h4 className="text-sm sm:text-base font-extrabold text-gray-900 leading-snug">
+                          &quot;{iq.question}&quot;
+                        </h4>
+                      </div>
+
+                      <button
+                        onClick={() => handleCopy(iq.modelAnswer, `iq-${idx}`)}
+                        className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-semibold shrink-0 transition flex items-center space-x-1 cursor-pointer"
+                        title="모범 답안 복사"
+                      >
+                        {copiedKey === `iq-${idx}` ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-emerald-600">답안 복사됨</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>답안 복사</span>
+                          </>
+                        )}
+                      </button>
                     </div>
 
-                    <button
-                      onClick={() => handleCopy(iq.modelAnswer, `iq-${idx}`)}
-                      className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-semibold shrink-0 transition flex items-center space-x-1 cursor-pointer"
-                      title="모범 답안 복사"
-                    >
-                      {copiedKey === `iq-${idx}` ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-emerald-600">답안 복사됨</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>답안 복사</span>
-                        </>
-                      )}
-                    </button>
+                    {/* Interviewer Intent & Model Answer */}
+                    {!isPro && idx > 0 ? (
+                      <div className="relative rounded-xl overflow-hidden p-4 bg-gray-50 border border-indigo-100 text-center space-y-3">
+                        <div className="filter blur-sm opacity-40 select-none space-y-2 pointer-events-none">
+                          <div className="p-3 bg-amber-500/10 rounded-xl text-xs text-amber-900">
+                            <strong>😈 면접관 속마음 / 질문 의도:</strong> 이 지원자의 실제 문제 해결 역량과 수치 근거를 날카롭게 검증하려는 의도입니다.
+                          </div>
+                          <div className="p-4 bg-indigo-50/60 rounded-xl text-xs text-gray-800">
+                            💡 사이다 모범 답안: 데이터 수치와 구체적 성과를 두괄식으로 답변합니다.
+                          </div>
+                        </div>
+                        <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center p-4">
+                          <div className="flex items-center space-x-1.5 text-xs font-bold text-indigo-900 mb-1">
+                            <Lock className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Dethan Pro 전용 면접관 의도 & 사이다 모범 답안</span>
+                          </div>
+                          <button
+                            onClick={onOpenPayment}
+                            className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-xl shadow-md transition active:scale-95 flex items-center space-x-1.5 cursor-pointer"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                            <span>3,900원에 실전 면접 족보 잠금 해제 &gt;</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Interviewer Intent */}
+                        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-900 flex items-start space-x-2">
+                          <HelpCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <div>
+                            <strong className="font-bold text-amber-900">😈 면접관 속마음 / 질문 의도:</strong>{' '}
+                            {iq.interviewerIntent}
+                          </div>
+                        </div>
+
+                        {/* Model Answer */}
+                        <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-1.5 text-xs sm:text-sm">
+                          <div className="flex items-center justify-between text-indigo-700 font-bold text-xs">
+                            <span>💡 사이다 모범 답안</span>
+                            <span className="text-[10px] text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded">합격 가이드</span>
+                          </div>
+                          <p className="text-gray-800 leading-relaxed font-medium whitespace-pre-wrap">
+                            &quot;{iq.modelAnswer}&quot;
+                          </p>
+                        </div>
+
+                        {/* Key Tip */}
+                        <div className="flex items-center space-x-2 text-xs text-gray-500 pt-1">
+                          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span><strong className="text-gray-700">면접 꿀팁:</strong> {iq.keyTip}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-400 text-sm">
+                면접 예상 질문이 아직 생성되지 않았습니다.
+              </div>
+            )}
 
-                  {/* Interviewer Intent & Model Answer */}
-                  {!isPro && idx > 0 ? (
-                    <div className="relative rounded-xl overflow-hidden p-4 bg-gray-50 border border-indigo-100 text-center space-y-3">
-                      <div className="filter blur-sm opacity-40 select-none space-y-2 pointer-events-none">
-                        <div className="p-3 bg-amber-500/10 rounded-xl text-xs text-amber-900">
-                          <strong>😈 면접관 속마음 / 질문 의도:</strong> 이 지원자의 실제 문제 해결 역량과 수치 근거를 날카롭게 검증하려는 의도입니다.
-                        </div>
-                        <div className="p-4 bg-indigo-50/60 rounded-xl text-xs text-gray-800">
-                          💡 사이다 모범 답안: 데이터 수치와 구체적 성과를 두괄식으로 답변합니다.
-                        </div>
-                      </div>
-                      <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center p-4">
-                        <div className="flex items-center space-x-1.5 text-xs font-bold text-indigo-900 mb-1">
-                          <Lock className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Dethan Pro 전용 면접관 의도 & 사이다 모범 답안</span>
-                        </div>
-                        <button
-                          onClick={onOpenPayment}
-                          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-xl shadow-md transition active:scale-95 flex items-center space-x-1.5 cursor-pointer"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                          <span>3,900원에 실전 면접 족보 잠금 해제 &gt;</span>
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Interviewer Intent */}
-                      <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-900 flex items-start space-x-2">
-                        <HelpCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                        <div>
-                          <strong className="font-bold text-amber-900">😈 면접관 속마음 / 질문 의도:</strong>{' '}
-                          {iq.interviewerIntent}
-                        </div>
-                      </div>
-
-                      {/* Model Answer */}
-                      <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-1.5 text-xs sm:text-sm">
-                        <div className="flex items-center justify-between text-indigo-700 font-bold text-xs">
-                          <span>💡 사이다 모범 답안</span>
-                          <span className="text-[10px] text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded">합격 가이드</span>
-                        </div>
-                        <p className="text-gray-800 leading-relaxed font-medium whitespace-pre-wrap">
-                          &quot;{iq.modelAnswer}&quot;
-                        </p>
-                      </div>
-
-                      {/* Key Tip */}
-                      <div className="flex items-center space-x-2 text-xs text-gray-500 pt-1">
-                        <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span><strong className="text-gray-700">면접 꿀팁:</strong> {iq.keyTip}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
+            {/* 🎯 면접 준비 핵심 체크리스트 */}
+            <div className="bg-gradient-to-br from-slate-50 to-indigo-50/50 border border-indigo-100 rounded-2xl p-5 sm:p-6 space-y-4">
+              <h4 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs">✓</span>
+                면접 준비 핵심 체크리스트
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { emoji: '🎯', title: '두괄식 답변 구조', desc: '결론 → 근거 → 사례 순서로 30초 이내에 핵심을 전달하세요.' },
+                  { emoji: '📊', title: '수치화된 성과 제시', desc: '"20% 개선", "3건 수주" 등 구체적 숫자로 신뢰도를 높이세요.' },
+                  { emoji: '💬', title: '역질문 준비', desc: '"제가 합류한다면 어떤 프로젝트부터 맡게 될까요?" 등 적극적인 관심을 보여주세요.' },
+                ].map((item, idx) => (
+                  <div key={idx} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm space-y-2">
+                    <div className="text-2xl">{item.emoji}</div>
+                    <div className="text-xs font-bold text-gray-900">{item.title}</div>
+                    <p className="text-[11px] text-gray-500 leading-relaxed">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -809,6 +868,16 @@ ${result.recommendedKeywords.join(', ')}
           </div>
         </div>
       )}
+      {/* OG Card Generator Modal */}
+      <OgCardGenerator
+        isOpen={isOgCardOpen}
+        onClose={() => setIsOgCardOpen(false)}
+        overallScore={result.overallScore}
+        headline={result.headline}
+        jobTitle={request.jobTitle}
+        companyName={request.companyName}
+        scoreBreakdown={result.scoreBreakdown}
+      />
     </div>
   );
 };
