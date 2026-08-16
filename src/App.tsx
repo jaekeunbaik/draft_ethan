@@ -12,6 +12,7 @@ import { CoffeeModal } from './components/CoffeeModal';
 import { TermsModal } from './components/TermsModal';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { ContentGuideSection } from './components/ContentGuideSection';
+import { TestimonialsSection } from './components/TestimonialsSection';
 import { CorrectionRequest, CorrectionResponse, HistoryItem } from './types';
 import { AlertCircle, ArrowUp, Instagram, ShieldCheck } from 'lucide-react';
 import { supabase } from './lib/supabase';
@@ -731,6 +732,9 @@ export default function App() {
             }}
           />
         )}
+
+        {/* 🏆 합격 후기 Social Proof 섹션 */}
+        <TestimonialsSection />
 
         {/* 자소서 가이드 콘텐츠 — AdSense 정책 준수 및 SEO 강화 */}
         <ContentGuideSection />
