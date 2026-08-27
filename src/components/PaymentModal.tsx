@@ -222,7 +222,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white border border-gray-100 rounded-2xl max-w-lg w-full flex flex-col shadow-2xl text-gray-800 overflow-hidden relative max-h-[92vh]">
+      <div 
+        style={{ WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale', textRendering: 'optimizeLegibility' }}
+        className="bg-white border border-gray-200 rounded-2xl max-w-lg w-full flex flex-col shadow-2xl text-gray-900 overflow-hidden relative max-h-[92vh]"
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -236,33 +239,33 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
           <div className="inline-flex px-2 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[10px] font-extrabold tracking-wider uppercase mb-2">
             Premium Pass
           </div>
-          <h3 className="font-extrabold tracking-tight text-xl">
+          <h3 className="font-extrabold tracking-tight text-xl text-white">
             Dethan <span className="text-amber-400">Pro</span> 이용권 선택
           </h3>
-          <p className="text-xs text-indigo-200 mt-1">
+          <p className="text-xs text-indigo-100 mt-1 font-medium">
             부담 없는 가격으로 원클릭 무제한 자소서 첨삭 기능을 완전히 잠금해제 하세요.
           </p>
 
           <div className="grid grid-cols-2 gap-2 mt-4">
-            <div className="flex items-center gap-1.5 text-xs text-indigo-100">
+            <div className="flex items-center gap-1.5 text-xs text-white font-medium">
               <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                 <Check className="w-2.5 h-2.5" />
               </div>
               <span>무제한 첨삭 요청</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-indigo-100">
+            <div className="flex items-center gap-1.5 text-xs text-white font-medium">
               <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                 <Check className="w-2.5 h-2.5" />
               </div>
               <span>고급 비즈니스 어체 활성화</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-indigo-100">
+            <div className="flex items-center gap-1.5 text-xs text-white font-medium">
               <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                 <Check className="w-2.5 h-2.5" />
               </div>
               <span>첨삭 기록 전용 보관함</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-indigo-100">
+            <div className="flex items-center gap-1.5 text-xs text-white font-medium">
               <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                 <Check className="w-2.5 h-2.5" />
               </div>
@@ -275,29 +278,29 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
           {/* Product Type Selector */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">요금제 선택</label>
+            <label className="text-xs font-extrabold text-gray-800 uppercase tracking-wider block">요금제 선택</label>
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {/* Option 1: 24-hour Pass */}
               <div
                 onClick={() => handleProductSelect('24hours')}
                 className={`border-2 rounded-xl p-3 cursor-pointer transition flex flex-col justify-between relative ${
                   selectedProduct === '24hours'
-                    ? 'border-indigo-600 bg-indigo-50/30 shadow-sm ring-1 ring-indigo-500'
+                    ? 'border-indigo-600 bg-indigo-50/40 shadow-sm ring-2 ring-indigo-500/20'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] sm:text-xs font-extrabold text-indigo-900">24시간 패스</span>
+                    <span className="text-[11px] sm:text-xs font-extrabold text-indigo-950">24시간 패스</span>
                   </div>
-                  <span className="inline-block text-[9px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded leading-none mt-1">
+                  <span className="inline-block text-[9px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded leading-none mt-1">
                     마감 D-Day 🔥
                   </span>
-                  <p className="text-[9px] sm:text-[10px] text-gray-400 mt-1">오늘 하루 무제한</p>
+                  <p className="text-[9.5px] sm:text-[10px] text-gray-600 font-medium mt-1">오늘 하루 무제한</p>
                 </div>
-                <div className="mt-2 pt-1 border-t border-gray-100">
-                  <span className="text-sm sm:text-base font-extrabold text-gray-900">1,200원</span>
-                  <span className="text-[9px] sm:text-[10px] text-gray-500 font-medium"> / 1일</span>
+                <div className="mt-2 pt-1 border-t border-gray-200">
+                  <span className="text-sm sm:text-base font-extrabold text-gray-950">1,200원</span>
+                  <span className="text-[10px] text-gray-600 font-semibold"> / 1일</span>
                 </div>
               </div>
 
@@ -306,22 +309,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
                 onClick={() => handleProductSelect('7days')}
                 className={`border-2 rounded-xl p-3 cursor-pointer transition flex flex-col justify-between relative ${
                   selectedProduct === '7days'
-                    ? 'border-indigo-600 bg-indigo-50/30 shadow-sm ring-1 ring-indigo-500'
+                    ? 'border-indigo-600 bg-indigo-50/40 shadow-sm ring-2 ring-indigo-500/20'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] sm:text-xs font-extrabold text-indigo-900">7일 완성</span>
+                    <span className="text-[11px] sm:text-xs font-extrabold text-indigo-950">7일 완성</span>
                   </div>
-                  <span className="inline-block text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded leading-none mt-1">
+                  <span className="inline-block text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded leading-none mt-1">
                     추천 🌟
                   </span>
-                  <p className="text-[9px] sm:text-[10px] text-gray-400 mt-1">커피 1잔값 7일</p>
+                  <p className="text-[9.5px] sm:text-[10px] text-gray-600 font-medium mt-1">커피 1잔값 7일</p>
                 </div>
-                <div className="mt-2 pt-1 border-t border-gray-100">
-                  <span className="text-sm sm:text-base font-extrabold text-gray-900">3,900원</span>
-                  <span className="text-[9px] sm:text-[10px] text-gray-500 font-medium"> / 7일</span>
+                <div className="mt-2 pt-1 border-t border-gray-200">
+                  <span className="text-sm sm:text-base font-extrabold text-gray-950">3,900원</span>
+                  <span className="text-[10px] text-gray-600 font-semibold"> / 7일</span>
                 </div>
               </div>
 
@@ -330,22 +333,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
                 onClick={() => handleProductSelect('30days')}
                 className={`border-2 rounded-xl p-3 cursor-pointer transition flex flex-col justify-between relative ${
                   selectedProduct === '30days'
-                    ? 'border-indigo-600 bg-indigo-50/30 shadow-sm ring-1 ring-indigo-500'
+                    ? 'border-indigo-600 bg-indigo-50/40 shadow-sm ring-2 ring-indigo-500/20'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] sm:text-xs font-bold text-gray-700">30일 올패스</span>
+                    <span className="text-[11px] sm:text-xs font-bold text-gray-900">30일 올패스</span>
                   </div>
-                  <span className="inline-block text-[9px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded leading-none mt-1">
+                  <span className="inline-block text-[9px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded leading-none mt-1">
                     시즌권 👑
                   </span>
-                  <p className="text-[9px] sm:text-[10px] text-gray-400 mt-1">공채 1달 무제한</p>
+                  <p className="text-[9.5px] sm:text-[10px] text-gray-600 font-medium mt-1">공채 1달 무제한</p>
                 </div>
-                <div className="mt-2 pt-1 border-t border-gray-100">
-                  <span className="text-sm sm:text-base font-extrabold text-gray-900">9,900원</span>
-                  <span className="text-[9px] sm:text-[10px] text-gray-500 font-medium"> / 30일</span>
+                <div className="mt-2 pt-1 border-t border-gray-200">
+                  <span className="text-sm sm:text-base font-extrabold text-gray-950">9,900원</span>
+                  <span className="text-[10px] text-gray-600 font-semibold"> / 30일</span>
                 </div>
               </div>
             </div>
@@ -364,8 +367,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
                 </span>
               </div>
 
-              <p className="text-[11px] text-gray-600">
-                버튼을 누르면 토스 앱이 실행되어 <strong className="text-gray-900">{getAmount(selectedProduct).toLocaleString()}원</strong> 송금 화면이 바로 열립니다.
+              <p className="text-xs text-gray-800 font-medium">
+                버튼을 누르면 토스 앱이 실행되어 <strong className="text-gray-950 font-bold">{getAmount(selectedProduct).toLocaleString()}원</strong> 송금 화면이 바로 열립니다.
               </p>
 
               <button
@@ -380,31 +383,31 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
 
           {/* Account Transfer Info Box */}
           <div className="animate-fade-in space-y-4">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
+            <label className="text-xs font-extrabold text-gray-800 uppercase tracking-wider block">
               {isMobile ? '타 은행 직접 이체 및 입금자 성함' : '입금 계좌 정보 및 입금자 성함'}
             </label>
-            <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 space-y-3.5 shadow-sm">
+            <div className="bg-indigo-50/60 border border-indigo-200 rounded-xl p-4 space-y-3.5 shadow-sm">
               <div className="flex justify-between items-start">
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold text-gray-500">카카오뱅크</span>
-                    <span className="text-base font-extrabold text-indigo-900 tracking-tight">7942-03-88490</span>
+                    <span className="text-sm font-bold text-gray-700">카카오뱅크</span>
+                    <span className="text-base font-extrabold text-indigo-950 tracking-tight">7942-03-88490</span>
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-0.5">예금주: 백재근</p>
+                  <p className="text-xs text-gray-700 font-semibold mt-0.5">예금주: 백재근</p>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleCopyAccount}
-                  className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold flex items-center gap-1 transition shrink-0 cursor-pointer ${
+                  className={`text-xs px-3 py-1.5 rounded-lg border font-bold flex items-center gap-1 transition shrink-0 cursor-pointer ${
                     copied
-                      ? 'border-emerald-300 bg-emerald-50 text-emerald-600 font-bold'
-                      : 'border-indigo-200 bg-white hover:bg-gray-50 text-indigo-700'
+                      ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                      : 'border-indigo-300 bg-white hover:bg-gray-50 text-indigo-800 shadow-2xs'
                   }`}
                 >
                   {copied ? (
                     <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                       <span>복사완료</span>
                     </>
                   ) : (
@@ -416,43 +419,43 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
                 </button>
               </div>
 
-              <div className="border-t border-indigo-100/50 pt-3 flex justify-between items-center text-xs">
-                <span className="text-gray-500 font-medium">지정 입금액</span>
-                <span className="font-extrabold text-indigo-950 text-sm">
+              <div className="border-t border-indigo-200/70 pt-3 flex justify-between items-center text-xs">
+                <span className="text-gray-700 font-bold">지정 입금액</span>
+                <span className="font-extrabold text-indigo-950 text-base">
                   {getAmount(selectedProduct).toLocaleString()}원
                 </span>
               </div>
 
               {/* Depositor Name Input Field */}
-              <div className="border-t border-indigo-100/50 pt-3.5 space-y-1.5">
-                <label className="text-[11px] font-extrabold text-indigo-900 block flex items-center gap-1">
-                  <span>👤</span> 입금자 성함 (실제 송금자 이름) <span className="text-rose-500 font-bold">*</span>
+              <div className="border-t border-indigo-200/70 pt-3.5 space-y-1.5">
+                <label className="text-xs font-extrabold text-indigo-950 block flex items-center gap-1">
+                  <span>👤</span> 입금자 성함 (실제 송금자 이름) <span className="text-rose-600 font-bold">*</span>
                 </label>
                 <input
                   type="text"
                   placeholder="송금 시 기재한 입금자명을 적어주세요"
                   value={depositorName}
                   onChange={(e) => setDepositorName(e.target.value)}
-                  className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-xs bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-indigo-300 rounded-lg text-xs bg-white text-gray-900 font-medium placeholder-gray-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 shadow-2xs"
                   required
                 />
               </div>
             </div>
 
             {/* Pro Activation Guide Box with Sharp High-Contrast Typography */}
-            <div className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-3.5 leading-relaxed space-y-2 shadow-2xs">
-              <p className="font-extrabold text-slate-900 flex items-center gap-1.5 text-xs">
+            <div className="text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded-xl p-3.5 leading-relaxed space-y-2 shadow-2xs">
+              <p className="font-extrabold text-slate-950 flex items-center gap-1.5 text-xs">
                 <span>📌</span> Pro 등급 활성화 가이드:
               </p>
-              <div className="space-y-1.5 pl-0.5 text-slate-800 font-medium">
+              <div className="space-y-1.5 pl-0.5 text-slate-900 font-medium">
                 <p>
-                  1. {isMobile ? '[토스 1초 송금] 또는 [계좌 복사 후 이체]' : '카카오뱅크 계좌'}로 지정 금액 <strong className="font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.5 rounded text-[11.5px]">{getAmount(selectedProduct).toLocaleString()}원</strong>을 송금해 주세요.
+                  1. {isMobile ? '[토스 1초 송금] 또는 [계좌 복사 후 이체]' : '카카오뱅크 계좌'}로 지정 금액 <strong className="font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-300 px-1.5 py-0.5 rounded text-xs">{getAmount(selectedProduct).toLocaleString()}원</strong>을 송금해 주세요.
                 </p>
                 <p>
-                  2. 송금 후, 위 입력란에 실제 <strong className="text-slate-950 font-bold underline decoration-indigo-300 underline-offset-2">입금자 성함</strong>을 적고 아래 <strong className="text-indigo-700 font-extrabold">[입금 완료] 버튼</strong>을 꼭 눌러주세요!
+                  2. 송금 후, 위 입력란에 실제 <strong className="text-slate-950 font-bold underline decoration-indigo-400 underline-offset-2">입금자 성함</strong>을 적고 아래 <strong className="text-indigo-700 font-extrabold">[입금 완료] 버튼</strong>을 꼭 눌러주세요!
                 </p>
-                <p className="text-[11.5px] text-slate-600 pt-0.5">
-                  3. 빠른 승인 및 문의: <a href="https://www.instagram.com/draft_ethan?igsh=MXJubXc5cjJ5ZTA1Zw==" target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 font-bold underline inline-flex items-center gap-0.5"><Instagram className="w-3.5 h-3.5 inline text-pink-600" />인스타그램 DM (@draft_ethan)</a>으로 남겨주시면 실시간 처리해 드립니다.
+                <p className="text-xs text-slate-700 pt-0.5 font-medium">
+                  3. 빠른 승인 및 문의: <a href="https://www.instagram.com/draft_ethan?igsh=MXJubXc5cjJ5ZTA1Zw==" target="_blank" rel="noreferrer" className="text-indigo-700 hover:text-indigo-900 font-bold underline inline-flex items-center gap-0.5"><Instagram className="w-3.5 h-3.5 inline text-pink-600" />인스타그램 DM (@draft_ethan)</a>으로 남겨주시면 실시간 처리해 드립니다.
                 </p>
               </div>
             </div>
@@ -460,13 +463,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
         </div>
 
         {/* Action Button Footer */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex flex-col gap-2 shrink-0">
+        <div className="p-4 border-t border-gray-200 bg-gray-50 flex flex-col gap-2 shrink-0">
           <div className="flex justify-between items-center text-xs px-2">
-            <span className="text-gray-500 font-medium">선택 상품</span>
-            <span className="font-semibold text-gray-800 truncate max-w-[220px]">{getProductName(selectedProduct)}</span>
+            <span className="text-gray-700 font-semibold">선택 상품</span>
+            <span className="font-bold text-gray-900 truncate max-w-[220px]">{getProductName(selectedProduct)}</span>
           </div>
           <div className="flex justify-between items-center text-sm px-2">
-            <span className="text-gray-800 font-bold">최종 입금액</span>
+            <span className="text-gray-900 font-bold">최종 입금액</span>
             <span className="font-extrabold text-indigo-600 text-base">
               {getAmount(selectedProduct).toLocaleString()} 원
             </span>
@@ -478,8 +481,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
               onClick={handleCopyAccount}
               className={`col-span-1 py-3 rounded-xl border text-xs font-bold transition flex items-center justify-center cursor-pointer active:scale-98 ${
                 copied
-                  ? 'border-emerald-300 bg-emerald-50 text-emerald-600 font-extrabold'
-                  : 'border-indigo-200 bg-white hover:bg-gray-50 text-indigo-700'
+                  ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                  : 'border-indigo-300 bg-white hover:bg-gray-100 text-indigo-800 shadow-2xs'
               }`}
             >
               <span>{copied ? '복사완료' : '계좌 복사'}</span>
@@ -498,7 +501,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
             </button>
           </div>
 
-          <p className="text-[10px] text-gray-400 text-center select-none pt-1">
+          <p className="text-[11px] text-gray-600 font-medium text-center select-none pt-1">
             송금 완료 후 꼭 '입금 완료' 버튼을 클릭하셔야 자동 접수되어 관리자가 승인할 수 있습니다.
           </p>
         </div>
