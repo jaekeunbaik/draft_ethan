@@ -9,21 +9,35 @@ interface PaymentModalProps {
   user: any;
 }
 
-type ProductType = '7days' | '30days';
+type ProductType = '24hours' | '7days' | '30days';
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, user }) => {
-  const [selectedProduct, setSelectedProduct] = useState<ProductType>('7days');
+  const [selectedProduct, setSelectedProduct] = useState<ProductType>('24hours');
   const [copied, setCopied] = useState(false);
   const [depositorName, setDepositorName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
 
   const getAmount = (type: ProductType) => {
-    return type === '7days' ? 3900 : 9900;
+    switch (type) {
+      case '24hours':
+        return 1200;
+      case '7days':
+        return 3900;
+      case '30days':
+        return 9900;
+    }
   };
 
   const getProductName = (type: ProductType) => {
-    return type === '7days' ? 'Dethan Pro 7일 무제한 패스' : 'Dethan Pro 30일 무제한 올패스';
+    switch (type) {
+      case '24hours':
+        return 'Dethan Pro 24시간 벼락치기 패스';
+      case '7days':
+        return 'Dethan Pro 7일 무제한 패스';
+      case '30days':
+        return 'Dethan Pro 30일 무제한 올패스';
+    }
   };
 
   // 1. Log payment modal open intent (reuse existing 'opened' intent if present)
@@ -116,6 +130,20 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // Toss Deep Link 1-Second Transfer
+  const handleTossTransfer = () => {
+    const amount = getAmount(selectedProduct);
+    const tossUrl = `supertoss://send?bank=${encodeURIComponent('카카오뱅크')}&accountNo=79420388490&amount=${amount}`;
+    
+    // 자동 계좌번호 복사도 동시 수행 (토스 미설치/타 은행 대비)
+    navigator.clipboard.writeText('79420388490');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+
+    // 모바일 환경에서 토스 앱 딥링크 호출
+    window.location.href = tossUrl;
+  };
+
   const handleConfirmPaymentRequest = async () => {
     if (!depositorName.trim()) {
       alert('입금자 성함을 입력해 주세요! 입금 확인을 위해 꼭 필요합니다.');
@@ -187,7 +215,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white border border-gray-100 rounded-2xl max-w-lg w-full flex flex-col shadow-2xl text-gray-800 overflow-hidden relative max-h-[90vh]">
+      <div className="bg-white border border-gray-100 rounded-2xl max-w-lg w-full flex flex-col shadow-2xl text-gray-800 overflow-hidden relative max-h-[92vh]">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -202,10 +230,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
             Premium Pass
           </div>
           <h3 className="font-extrabold tracking-tight text-xl">
-            Dethan <span className="text-amber-400">Pro</span> 기간권 선택
+            Dethan <span className="text-amber-400">Pro</span> 이용권 선택
           </h3>
           <p className="text-xs text-indigo-200 mt-1">
-            가벼운 가격으로 원클릭 무제한 자소서 첨삭 기능을 완전히 잠금해제 하세요.
+            부담 없는 가격으로 원클릭 무제한 자소서 첨삭 기능을 완전히 잠금해제 하세요.
           </p>
 
           <div className="grid grid-cols-2 gap-2 mt-4">
@@ -237,58 +265,113 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
         </div>
 
         {/* Payment Form & Product Selector */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 pt-5">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
           {/* Product Type Selector */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">요금제 선택</label>
-            <div className="grid grid-cols-2 gap-3">
-              {/* Option 1: 7-day Pass */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              {/* Option 1: 24-hour Pass */}
               <div
-                onClick={() => handleProductSelect('7days')}
-                className={`border-2 rounded-xl p-3.5 cursor-pointer transition flex flex-col justify-between ${selectedProduct === '7days'
-                    ? 'border-indigo-600 bg-indigo-50/20 shadow-sm'
-                    : 'border-gray-100 bg-white hover:border-gray-200'
-                  }`}
+                onClick={() => handleProductSelect('24hours')}
+                className={`border-2 rounded-xl p-3 cursor-pointer transition flex flex-col justify-between relative ${
+                  selectedProduct === '24hours'
+                    ? 'border-indigo-600 bg-indigo-50/30 shadow-sm ring-1 ring-indigo-500'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-indigo-750">7일 완성 패스</span>
-                    <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded leading-none">인기 🔥</span>
+                    <span className="text-[11px] sm:text-xs font-extrabold text-indigo-900">24시간 패스</span>
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1">커피 1잔 값으로 7일 무제한</p>
+                  <span className="inline-block text-[9px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded leading-none mt-1">
+                    마감 D-Day 🔥
+                  </span>
+                  <p className="text-[9px] sm:text-[10px] text-gray-400 mt-1">오늘 하루 무제한</p>
                 </div>
-                <div className="mt-2.5">
-                  <span className="text-base font-extrabold text-gray-900">3,900원</span>
-                  <span className="text-[10px] text-gray-500 font-medium"> / 7일</span>
+                <div className="mt-2 pt-1 border-t border-gray-100">
+                  <span className="text-sm sm:text-base font-extrabold text-gray-900">1,200원</span>
+                  <span className="text-[9px] sm:text-[10px] text-gray-500 font-medium"> / 1일</span>
                 </div>
               </div>
 
-              {/* Option 2: 30-day Pass */}
+              {/* Option 2: 7-day Pass */}
               <div
-                onClick={() => handleProductSelect('30days')}
-                className={`border-2 rounded-xl p-3.5 cursor-pointer transition flex flex-col justify-between ${selectedProduct === '30days'
-                    ? 'border-indigo-600 bg-indigo-50/20 shadow-sm'
-                    : 'border-gray-100 bg-white hover:border-gray-200'
-                  }`}
+                onClick={() => handleProductSelect('7days')}
+                className={`border-2 rounded-xl p-3 cursor-pointer transition flex flex-col justify-between relative ${
+                  selectedProduct === '7days'
+                    ? 'border-indigo-600 bg-indigo-50/30 shadow-sm ring-1 ring-indigo-500'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-700">30일 올패스</span>
-                    <span className="text-[9px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded leading-none">시즌권 👑</span>
+                    <span className="text-[11px] sm:text-xs font-extrabold text-indigo-900">7일 완성</span>
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1">공채 시즌 1달 무제한 + 족보</p>
+                  <span className="inline-block text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded leading-none mt-1">
+                    추천 🌟
+                  </span>
+                  <p className="text-[9px] sm:text-[10px] text-gray-400 mt-1">커피 1잔값 7일</p>
                 </div>
-                <div className="mt-2.5">
-                  <span className="text-base font-extrabold text-gray-900">9,900원</span>
-                  <span className="text-[10px] text-gray-500 font-medium"> / 30일</span>
+                <div className="mt-2 pt-1 border-t border-gray-100">
+                  <span className="text-sm sm:text-base font-extrabold text-gray-900">3,900원</span>
+                  <span className="text-[9px] sm:text-[10px] text-gray-500 font-medium"> / 7일</span>
+                </div>
+              </div>
+
+              {/* Option 3: 30-day Pass */}
+              <div
+                onClick={() => handleProductSelect('30days')}
+                className={`border-2 rounded-xl p-3 cursor-pointer transition flex flex-col justify-between relative ${
+                  selectedProduct === '30days'
+                    ? 'border-indigo-600 bg-indigo-50/30 shadow-sm ring-1 ring-indigo-500'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] sm:text-xs font-bold text-gray-700">30일 올패스</span>
+                  </div>
+                  <span className="inline-block text-[9px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded leading-none mt-1">
+                    시즌권 👑
+                  </span>
+                  <p className="text-[9px] sm:text-[10px] text-gray-400 mt-1">공채 1달 무제한</p>
+                </div>
+                <div className="mt-2 pt-1 border-t border-gray-100">
+                  <span className="text-sm sm:text-base font-extrabold text-gray-900">9,900원</span>
+                  <span className="text-[9px] sm:text-[10px] text-gray-500 font-medium"> / 30일</span>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* Quick Toss Transfer Section */}
+          <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/5 border border-blue-200 rounded-xl p-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#0064FF] animate-ping" />
+                <span className="text-xs font-extrabold text-[#0064FF]">⚡ 모바일 간편 송금 (토스)</span>
+              </div>
+              <span className="text-[10px] bg-blue-100 text-[#0050d8] font-bold px-2 py-0.5 rounded-full">
+                계좌/금액 자동입력
+              </span>
+            </div>
+
+            <p className="text-[11px] text-gray-600">
+              버튼을 누르면 토스 앱이 실행되어 <strong className="text-gray-900">{getAmount(selectedProduct).toLocaleString()}원</strong> 송금 화면이 바로 열립니다.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleTossTransfer}
+              className="w-full py-3 px-4 rounded-xl bg-[#0064FF] hover:bg-[#0050d8] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 active:scale-98 transition cursor-pointer"
+            >
+              <span>⚡ 토스 앱으로 {getAmount(selectedProduct).toLocaleString()}원 1초 만에 송금하기</span>
+            </button>
+          </div>
+
           {/* Account Transfer Info Box */}
           <div className="animate-fade-in space-y-4">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">입금 계좌 정보 및 입금자 입력</label>
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">타 은행 직접 이체 및 입금자 성함</label>
             <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 space-y-3.5 shadow-sm">
               <div className="flex justify-between items-start">
                 <div>
@@ -300,11 +383,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
                 </div>
 
                 <button
+                  type="button"
                   onClick={handleCopyAccount}
-                  className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold flex items-center gap-1 transition shrink-0 ${copied
-                      ? 'border-emerald-250 bg-emerald-50 text-emerald-600 font-bold'
-                      : 'border-indigo-150 bg-white hover:bg-gray-50 text-indigo-700 hover:text-indigo-850'
-                    }`}
+                  className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold flex items-center gap-1 transition shrink-0 cursor-pointer ${
+                    copied
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-600 font-bold'
+                      : 'border-indigo-200 bg-white hover:bg-gray-50 text-indigo-700'
+                  }`}
                 >
                   {copied ? (
                     <>
@@ -314,7 +399,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      <span>복사하기</span>
+                      <span>계좌 복사</span>
                     </>
                   )}
                 </button>
@@ -330,26 +415,26 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
               {/* Depositor Name Input Field */}
               <div className="border-t border-indigo-100/50 pt-3.5 space-y-1.5">
                 <label className="text-[11px] font-extrabold text-indigo-900 block flex items-center gap-1">
-                  <span>👤</span> 입금자 성함 (실제 송금 이름) <span className="text-rose-500 font-bold">*</span>
+                  <span>👤</span> 입금자 성함 (실제 송금자 이름) <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="송금 시 기재할 입금자명을 적어주세요"
+                  placeholder="송금 시 기재한 입금자명을 적어주세요"
                   value={depositorName}
                   onChange={(e) => setDepositorName(e.target.value)}
-                  className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-xs bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-650"
+                  className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-xs bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500"
                   required
                 />
               </div>
             </div>
 
-            <div className="text-[11px] text-gray-500 bg-gray-50 border border-gray-150 rounded-lg p-3 leading-relaxed space-y-1.5">
+            <div className="text-[11px] text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-3 leading-relaxed space-y-1.5">
               <p className="font-bold text-gray-700 flex items-center gap-1">
                 <span>📌</span> Pro 등급 활성화 가이드:
               </p>
-              <p>1. 위 은행 계좌번호로 지정 금액 <span className="font-bold text-indigo-600">{getAmount(selectedProduct).toLocaleString()}원</span>을 이체해 주세요.</p>
-              <p>2. 송금 후, 위 입력란에 실제 <strong className="text-gray-850">입금자 성함</strong>을 입력하고 아래 <strong className="text-indigo-700">입금 완료 버튼</strong>을 꼭 눌러주세요!</p>
-              <p>3. 입금 문의나 궁금하신 점은 <a href="https://www.instagram.com/draft_ethan?igsh=MXJubXc5cjJ5ZTA1Zw==" target="_blank" rel="noreferrer" className="text-purple-600 font-bold underline inline-flex items-center gap-0.5"><Instagram className="w-3 h-3 inline" />인스타그램 DM (@draft_ethan)</a>으로 남겨주시면 빠르게 답변드립니다.</p>
+              <p>1. [토스 1초 송금] 또는 [계좌 복사 후 이체]로 <strong className="text-indigo-600">{getAmount(selectedProduct).toLocaleString()}원</strong>을 송금해 주세요.</p>
+              <p>2. 송금 후, 위 입력란에 실제 <strong className="text-gray-900">입금자 성함</strong>을 입력하고 아래 <strong className="text-indigo-700">입금 완료 버튼</strong>을 꼭 눌러주세요!</p>
+              <p>3. 입금 문의나 빠른 승인 요청은 <a href="https://www.instagram.com/draft_ethan?igsh=MXJubXc5cjJ5ZTA1Zw==" target="_blank" rel="noreferrer" className="text-purple-600 font-bold underline inline-flex items-center gap-0.5"><Instagram className="w-3 h-3 inline" />인스타그램 DM (@draft_ethan)</a>으로 남겨주시면 실시간 처리해 드립니다.</p>
             </div>
           </div>
         </div>
@@ -362,30 +447,33 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
           </div>
           <div className="flex justify-between items-center text-sm px-2">
             <span className="text-gray-800 font-bold">최종 입금액</span>
-            <span className="font-extrabold text-indigo-650 text-base">
+            <span className="font-extrabold text-indigo-600 text-base">
               {getAmount(selectedProduct).toLocaleString()} 원
             </span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 mt-2">
             <button
+              type="button"
               onClick={handleCopyAccount}
-              className={`col-span-1 py-3 rounded-xl border text-xs font-bold transition flex items-center justify-center cursor-pointer active:scale-98 ${copied
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-600 font-extrabold'
+              className={`col-span-1 py-3 rounded-xl border text-xs font-bold transition flex items-center justify-center cursor-pointer active:scale-98 ${
+                copied
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-600 font-extrabold'
                   : 'border-indigo-200 bg-white hover:bg-gray-50 text-indigo-700'
-                }`}
+              }`}
             >
               <span>{copied ? '복사완료' : '계좌 복사'}</span>
             </button>
             <button
+              type="button"
               onClick={handleConfirmPaymentRequest}
               disabled={isSubmitting}
-              className="col-span-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-755 text-white text-xs font-extrabold transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-md shadow-indigo-600/5 active:scale-98"
+              className="col-span-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-md shadow-indigo-600/10 active:scale-98"
             >
               {isSubmitting ? (
                 <div className="w-3.5 h-3.5 border-2 border-white border-t-indigo-600 rounded-full animate-spin" />
               ) : (
-                <span>입금 완료 (꼭 눌러주세요!!)</span>
+                <span>입금 완료 (꼭 눌러주세요!)</span>
               )}
             </button>
           </div>

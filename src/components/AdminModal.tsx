@@ -188,7 +188,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     setActionLoadingId(req.id);
     try {
       let days = 30;
-      if (req.product.includes('7일')) {
+      if (req.product.includes('24시간') || req.product.includes('1일')) {
+        days = 1;
+      } else if (req.product.includes('7일')) {
         days = 7;
       } else if (req.product.includes('30일')) {
         days = 30;
