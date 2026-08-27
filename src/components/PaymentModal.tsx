@@ -130,18 +130,25 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
     setTimeout(() => setCopied(false), 1500);
   };
 
-  // Toss Deep Link 1-Second Transfer
+  const isMobile = typeof window !== 'undefined' && /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  // Toss Deep Link 1-Second Transfer (Mobile) or Quick Copy (PC)
   const handleTossTransfer = () => {
     const amount = getAmount(selectedProduct);
     const tossUrl = `supertoss://send?bank=${encodeURIComponent('카카오뱅크')}&accountNo=79420388490&amount=${amount}`;
     
-    // 자동 계좌번호 복사도 동시 수행 (토스 미설치/타 은행 대비)
+    // 자동 계좌번호 복사도 동시 수행
     navigator.clipboard.writeText('79420388490');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
 
-    // 모바일 환경에서 토스 앱 딥링크 호출
-    window.location.href = tossUrl;
+    if (isMobile) {
+      // 모바일 환경에서 토스 앱 딥링크 호출
+      window.location.href = tossUrl;
+    } else {
+      // PC 환경에서는 친절한 계좌 복사 안내 팝업
+      alert(`📋 카카오뱅크 7942-03-88490 (예금주: 백재근) 계좌번호가 복사되었습니다!\n\n스마트폰 은행 앱이나 인터넷 뱅킹에서 ${amount.toLocaleString()}원을 송금해 주세요.`);
+    }
   };
 
   const handleConfirmPaymentRequest = async () => {
@@ -344,20 +351,24 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
             </div>
           </div>
 
-          {/* Quick Toss Transfer Section */}
+          {/* Quick Toss / Instant Transfer Section */}
           <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/5 border border-blue-200 rounded-xl p-4 space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-[#0064FF] animate-ping" />
-                <span className="text-xs font-extrabold text-[#0064FF]">⚡ 모바일 간편 송금 (토스)</span>
+                <span className="text-xs font-extrabold text-[#0064FF]">
+                  {isMobile ? '⚡ 모바일 간편 송금 (토스)' : '💻 PC 간편 계좌 복사'}
+                </span>
               </div>
               <span className="text-[10px] bg-blue-100 text-[#0050d8] font-bold px-2 py-0.5 rounded-full">
-                계좌/금액 자동입력
+                {isMobile ? '계좌/금액 자동입력' : '카카오뱅크 7942-03-88490'}
               </span>
             </div>
 
             <p className="text-[11px] text-gray-600">
-              버튼을 누르면 토스 앱이 실행되어 <strong className="text-gray-900">{getAmount(selectedProduct).toLocaleString()}원</strong> 송금 화면이 바로 열립니다.
+              {isMobile
+                ? `버튼을 누르면 토스 앱이 실행되어 ${getAmount(selectedProduct).toLocaleString()}원 송금 화면이 바로 열립니다.`
+                : `버튼을 클릭하면 계좌번호가 즉시 복사됩니다. 모바일 뱅킹에서 ${getAmount(selectedProduct).toLocaleString()}원을 이체해 주세요.`}
             </p>
 
             <button
@@ -365,7 +376,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
               onClick={handleTossTransfer}
               className="w-full py-3 px-4 rounded-xl bg-[#0064FF] hover:bg-[#0050d8] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 active:scale-98 transition cursor-pointer"
             >
-              <span>⚡ 토스 앱으로 {getAmount(selectedProduct).toLocaleString()}원 1초 만에 송금하기</span>
+              <span>
+                {isMobile
+                  ? `⚡ 토스 앱으로 ${getAmount(selectedProduct).toLocaleString()}원 1초 만에 송금하기`
+                  : `📋 카카오뱅크 계좌 복사 (${getAmount(selectedProduct).toLocaleString()}원)`}
+              </span>
             </button>
           </div>
 
