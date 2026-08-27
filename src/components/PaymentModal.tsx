@@ -439,13 +439,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
               </div>
             </div>
 
-            <div className="text-[11px] text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-3 leading-relaxed space-y-1.5">
-              <p className="font-bold text-gray-700 flex items-center gap-1">
+            {/* Pro Activation Guide Box with Sharp High-Contrast Typography */}
+            <div className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-3.5 leading-relaxed space-y-2 shadow-2xs">
+              <p className="font-extrabold text-slate-900 flex items-center gap-1.5 text-xs">
                 <span>📌</span> Pro 등급 활성화 가이드:
               </p>
-              <p>1. [토스 1초 송금] 또는 [계좌 복사 후 이체]로 <strong className="text-indigo-600">{getAmount(selectedProduct).toLocaleString()}원</strong>을 송금해 주세요.</p>
-              <p>2. 송금 후, 위 입력란에 실제 <strong className="text-gray-900">입금자 성함</strong>을 입력하고 아래 <strong className="text-indigo-700">입금 완료 버튼</strong>을 꼭 눌러주세요!</p>
-              <p>3. 입금 문의나 빠른 승인 요청은 <a href="https://www.instagram.com/draft_ethan?igsh=MXJubXc5cjJ5ZTA1Zw==" target="_blank" rel="noreferrer" className="text-purple-600 font-bold underline inline-flex items-center gap-0.5"><Instagram className="w-3 h-3 inline" />인스타그램 DM (@draft_ethan)</a>으로 남겨주시면 실시간 처리해 드립니다.</p>
+              <div className="space-y-1.5 pl-0.5 text-slate-800 font-medium">
+                <p>
+                  1. {isMobile ? '[토스 1초 송금] 또는 [계좌 복사 후 이체]' : '카카오뱅크 계좌'}로 지정 금액 <strong className="font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.5 rounded text-[11.5px]">{getAmount(selectedProduct).toLocaleString()}원</strong>을 송금해 주세요.
+                </p>
+                <p>
+                  2. 송금 후, 위 입력란에 실제 <strong className="text-slate-950 font-bold underline decoration-indigo-300 underline-offset-2">입금자 성함</strong>을 적고 아래 <strong className="text-indigo-700 font-extrabold">[입금 완료] 버튼</strong>을 꼭 눌러주세요!
+                </p>
+                <p className="text-[11.5px] text-slate-600 pt-0.5">
+                  3. 빠른 승인 및 문의: <a href="https://www.instagram.com/draft_ethan?igsh=MXJubXc5cjJ5ZTA1Zw==" target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 font-bold underline inline-flex items-center gap-0.5"><Instagram className="w-3.5 h-3.5 inline text-pink-600" />인스타그램 DM (@draft_ethan)</a>으로 남겨주시면 실시간 처리해 드립니다.
+                </p>
+              </div>
             </div>
           </div>
         </div>
