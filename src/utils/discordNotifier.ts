@@ -13,8 +13,7 @@ const getWebhookUrl = (): string | undefined => {
 const getDepositWebhookUrl = (): string | undefined => {
   return (
     import.meta.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL ||
-    (typeof process !== 'undefined' ? process.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL || process.env.DISCORD_DEPOSIT_WEBHOOK_URL : undefined) ||
-    getWebhookUrl()
+    (typeof process !== 'undefined' ? process.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL || process.env.DISCORD_DEPOSIT_WEBHOOK_URL : undefined)
   );
 };
 
@@ -30,7 +29,7 @@ interface SendDiscordEmbedOptions {
 const sendDiscordEmbed = async (options: SendDiscordEmbedOptions): Promise<boolean> => {
   const webhookUrl = options.webhookUrl || getWebhookUrl();
   if (!webhookUrl) {
-    console.warn('⚠️ DISCORD_WEBHOOK_URL이 환경변수에 설정되어 있지 않습니다.');
+    console.warn('[DiscordNotifier] ⚠️ Webhook URL이 설정되어 있지 않아 알림을 건너뜁니다.');
     return false;
   }
 
@@ -74,68 +73,138 @@ import { supabase } from '../lib/supabase';
 
 let lastVisitorNotifyTime = 0;
 let isVisitorNotifying = false;
-const VISITOR_DEDUPE_KEY = 'dethan_visitor_notify_lock';
+const VISITOR_DEDUPE_KEY = 'dethan_visitor_notify_lock_v4';
+const COOKIE_LOCK_NAME = 'dethan_visit_lock_v4';
+const LOCK_TTL_MS = 10 * 60 * 1000; // 10분(600,000ms) 동일 유저/기기 중복 알림 완전 차단
+
+// 브라우저 탭 간 실시간 락 동기화
+let visitorChannel: BroadcastChannel | null = null;
+if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+  try {
+    visitorChannel = new BroadcastChannel('dethan_visitor_channel');
+    visitorChannel.onmessage = (event) => {
+      if (event.data?.type === 'VISITOR_NOTIFIED') {
+        lastVisitorNotifyTime = event.data.timestamp || Date.now();
+      }
+    };
+  } catch (e) {
+    // BroadcastChannel 비활성 환경 무시
+  }
+}
 
 export interface VisitorInfo {
   user?: any | null;
   isPro?: boolean;
 }
 
-const COOKIE_LOCK_NAME = 'dethan_visit_lock_v3';
+/**
+ * 봇 IP 대역 검사 (Meta, Google 등 크롤러/데이터센터 IP)
+ */
+const isKnownBotIp = (ip: string): boolean => {
+  if (!ip || ip === '확인 불가 / 비공개' || ip === '확인 불가 / VPN') return false;
+  
+  // Meta / Facebook IP 대역
+  if (
+    ip.startsWith('173.252.') ||
+    ip.startsWith('31.13.') ||
+    ip.startsWith('157.240.') ||
+    ip.startsWith('66.220.') ||
+    ip.startsWith('69.63.') ||
+    ip.startsWith('69.171.')
+  ) {
+    return true;
+  }
+
+  // Google / Crawler IP 대역
+  if (
+    ip.startsWith('66.249.') ||
+    ip.startsWith('64.233.') ||
+    ip.startsWith('66.102.') ||
+    ip.startsWith('72.14.') ||
+    ip.startsWith('74.125.') ||
+    ip.startsWith('209.85.') ||
+    ip.startsWith('216.58.') ||
+    ip.startsWith('216.239.')
+  ) {
+    return true;
+  }
+
+  return false;
+};
 
 /**
- * 1. notifyVisitor(): 유저 방문 시 알림 (로그인 유저 닉네임/등급 표기, Chrome 프리렌더 방지, 쿠키 락)
+ * 1. notifyVisitor(): 유저 방문 시 알림
+ * - 봇/크롤러/헤드리스 트래픽 100% 무음 차단 (Meta, Google, Naver, Kakao 미리보기 등)
+ * - 10분 쿨다운 및 4중 동기 락 (Cookie + LocalStorage + SessionStorage + BroadcastChannel)
  */
 export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> => {
-  // 1. Chrome Speculative Prerender 감지 (주소창 입력 시 백그라운드 프리렌더 1회 + 실제 활성화 1회 이중 실행 방지)
+  if (typeof window === 'undefined') return false;
+
+  // 1. Chrome Speculative Prerender 감지 (주소창 자동완성 백그라운드 프리렌더 방지)
   if (typeof document !== 'undefined' && (document as any).prerendering) {
-    document.addEventListener('prerenderingchange', () => {
-      notifyVisitor(userInfo);
-    }, { once: true });
     return false;
   }
 
-  // 2. Cookie 락 (브라우저 모든 탭/프리렌더/메모리 컨텍스트 통합 3분 중복 차단)
-  if (typeof document !== 'undefined') {
-    if (document.cookie.includes(`${COOKIE_LOCK_NAME}=1`)) {
-      return false;
-    }
-    document.cookie = `${COOKIE_LOCK_NAME}=1; max-age=180; path=/; samesite=lax`;
+  // 2. WebDriver / Headless 브라우저 즉시 차단
+  if (typeof navigator !== 'undefined' && (navigator.webdriver || (window as any)._phantom || (window as any).__nightmare)) {
+    return false;
+  }
+
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const rawReferrer = typeof document !== 'undefined' ? (document.referrer || '') : '';
+
+  // 3. User-Agent 봇/크롤러 즉시 차단 (디스코드 알림 발송 생략)
+  const isBotUserAgent =
+    /facebookexternalhit|Facebot|FB_IAB|FB4A|FBAV|Instagram|Threads|Googlebot|Mediapartners-Google|AdsBot-Google|Google-Read-Aloud|Chrome-Lighthouse|Google-Site-Verification|bingbot|msnbot|BingPreview|Yeti|NaverBot|Daumoa|kakaotalk-scrap|Twitterbot|Discordbot|TelegramBot|Slackbot|LinkedInBot|WhatsApp|bot|crawler|spider|crawling|headless|prerender|phantomjs|selenium|puppeteer/i.test(
+      userAgent
+    );
+
+  if (isBotUserAgent) {
+    // 봇 트래픽은 알림 폭탄 방지를 위해 디스코드로 전송하지 않고 무음 리턴
+    return true;
   }
 
   const now = Date.now();
 
-  // 3. 메모리 즉시 락 (동시 호출 및 30초 쿨다운 차단)
-  if (isVisitorNotifying || now - lastVisitorNotifyTime < 30000) {
+  // 4. Cookie 락 (브라우저 모든 탭/프리렌더/컨텍스트 통합 10분 락)
+  if (typeof document !== 'undefined') {
+    if (document.cookie.includes(`${COOKIE_LOCK_NAME}=1`)) {
+      return false;
+    }
+    document.cookie = `${COOKIE_LOCK_NAME}=1; max-age=600; path=/; samesite=lax`;
+  }
+
+  // 5. 메모리 즉시 락 (동시 호출 및 10분 쿨다운 차단)
+  if (isVisitorNotifying || now - lastVisitorNotifyTime < LOCK_TTL_MS) {
     return false;
   }
   isVisitorNotifying = true;
   lastVisitorNotifyTime = now;
 
-  // 4. 브라우저 세션/로컬 스토리지 락
-  if (typeof window !== 'undefined') {
-    try {
-      const sessionLock = window.sessionStorage?.getItem(VISITOR_DEDUPE_KEY);
-      const localLock = window.localStorage?.getItem(VISITOR_DEDUPE_KEY);
-      const lastTs = Math.max(
-        sessionLock ? parseInt(sessionLock, 10) : 0,
-        localLock ? parseInt(localLock, 10) : 0
-      );
-      if (lastTs && now - lastTs < 180000) { // 3분(180,000ms) 이내 중복 알림 차단
-        isVisitorNotifying = false;
-        return false;
-      }
-      window.sessionStorage?.setItem(VISITOR_DEDUPE_KEY, String(now));
-      window.localStorage?.setItem(VISITOR_DEDUPE_KEY, String(now));
-    } catch (e) {
-      // 스토리지 접근 제한 환경 예외 처리
+  // 6. 브라우저 세션/로컬 스토리지 락 (동기 즉시 기록)
+  try {
+    const sessionLock = window.sessionStorage?.getItem(VISITOR_DEDUPE_KEY);
+    const localLock = window.localStorage?.getItem(VISITOR_DEDUPE_KEY);
+    const lastTs = Math.max(
+      sessionLock ? parseInt(sessionLock, 10) : 0,
+      localLock ? parseInt(localLock, 10) : 0
+    );
+    if (lastTs && now - lastTs < LOCK_TTL_MS) {
+      isVisitorNotifying = false;
+      return false;
     }
+    window.sessionStorage?.setItem(VISITOR_DEDUPE_KEY, String(now));
+    window.localStorage?.setItem(VISITOR_DEDUPE_KEY, String(now));
+
+    // 다른 탭에 즉시 전파
+    if (visitorChannel) {
+      visitorChannel.postMessage({ type: 'VISITOR_NOTIFIED', timestamp: now });
+    }
+  } catch (e) {
+    // 스토리지 접근 제한 환경 예외 처리
   }
 
   try {
-    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
-    const rawReferrer = typeof document !== 'undefined' ? (document.referrer || '') : '';
-
     // 유저 세션 확인 (파라미터 우선 -> localStorage Supabase 토큰 동기 파싱 -> getSession 조회)
     let currentUser = userInfo?.user;
     let isPro = userInfo?.isPro ?? false;
@@ -167,8 +236,7 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
       } catch (e) {}
     }
 
-    // 1. 봇 / 로그인 회원 / 비회원 판별
-    let isBot = false;
+    // 로그인 회원 / 비회원 판별
     let visitorType = '👤 비회원 방문자 (Guest)';
 
     if (currentUser) {
@@ -208,75 +276,13 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
 
       const proBadge = isPro ? '👑 PRO 회원' : '⭐ 일반 회원';
       visitorType = `👤 ${nickname}님 (${proBadge})`;
-    } else if (/Mediapartners-Google/i.test(userAgent)) {
-      isBot = true;
-      visitorType = '🤖 Google 애드센스/광고 분석 봇';
-    } else if (/Googlebot/i.test(userAgent)) {
-      isBot = true;
-      visitorType = '🤖 Google 검색 색인 크롤러';
-    } else if (/bingbot/i.test(userAgent)) {
-      isBot = true;
-      visitorType = '🤖 Bing 검색 크롤러';
-    } else if (/facebookexternalhit|Threads/i.test(userAgent)) {
-      isBot = true;
-      visitorType = '🤖 Meta / Threads 링크 미리보기 봇';
-    } else if (/kakaotalk-scrap/i.test(userAgent)) {
-      isBot = true;
-      visitorType = '🤖 카카오톡 링크 미리보기 봇';
-    } else if (/Yeti|NaverBot/i.test(userAgent)) {
-      isBot = true;
-      visitorType = '🤖 네이버 검색 크롤러';
-    } else if (/bot|crawler|spider|crawling/i.test(userAgent)) {
-      isBot = true;
-      visitorType = '🤖 웹 크롤러 / 봇';
     }
 
-  // 2. 유입 채널 (Referrer) 스마트 분석
-  let channelName = '⚡ 직접 접속 / 북마크 / 주소창 입력';
-  if (/instagram\.com/i.test(rawReferrer)) {
-    channelName = '📸 인스타그램 (Instagram 프로필/링크)';
-  } else if (/threads\.net/i.test(rawReferrer)) {
-    channelName = '💬 스레드 (Threads 피드/프로필)';
-  } else if (/youtube\.com|youtu\.be/i.test(rawReferrer)) {
-    channelName = '🎬 유튜브 (YouTube 쇼츠/설명란)';
-  } else if (/myti/i.test(rawReferrer)) {
-    channelName = '🎯 MYTI 페르소나 테스트 ➔ 디든 연결 유입';
-  } else if (/google\./i.test(rawReferrer)) {
-    channelName = '🔍 Google 검색 유입';
-  } else if (/naver\./i.test(rawReferrer)) {
-    channelName = '🟢 네이버 검색 유입';
-  } else if (/kakao/i.test(rawReferrer)) {
-    channelName = '🟡 카카오톡 공유 링크 유입';
-  } else if (rawReferrer) {
-    channelName = `🌐 외부 웹사이트 (${rawReferrer.substring(0, 50)})`;
-  }
-
-  // 3. 기기 & OS 스마트 파싱
-  let osName = '기타 OS';
-  if (/iPhone/i.test(userAgent)) osName = 'Apple iPhone (iOS)';
-  else if (/iPad/i.test(userAgent)) osName = 'Apple iPad (iPadOS)';
-  else if (/Android/i.test(userAgent)) osName = 'Android 모바일';
-  else if (/Macintosh|Mac OS/i.test(userAgent)) osName = 'Mac (macOS)';
-  else if (/Windows/i.test(userAgent)) osName = 'Windows PC';
-
-  // 4. 브라우저 정밀 파싱 (크로미움 기반 브라우저 우선순위 체크)
-  let browserName = '기타 브라우저';
-  if (/kakao/i.test(userAgent)) browserName = '🟡 카카오톡 인앱';
-  else if (/instagram/i.test(userAgent)) browserName = '📸 인스타 인앱';
-  else if (/naver\(/i.test(userAgent)) browserName = '🟢 네이버 앱';
-  else if (/whale/i.test(userAgent)) browserName = '🐳 네이버 웨일 (Whale)';
-  else if (/samsungbrowser/i.test(userAgent)) browserName = '🌌 삼성 인터넷';
-  else if (/edg/i.test(userAgent)) browserName = '🟦 MS Edge';
-  else if (/firefox|fxios/i.test(userAgent)) browserName = '🦊 Firefox';
-  else if (/opr|opera/i.test(userAgent)) browserName = '🔴 Opera';
-  else if (/chrome|crios/i.test(userAgent)) browserName = '🔴 Chrome';
-  else if (/safari/i.test(userAgent) && !/chrome/i.test(userAgent)) browserName = '🧭 Safari';
-
-    // IP 주소 비동기 조회 (Fast timeout 1.5s)
+    // IP 주소 비동기 조회 (Fast timeout 1.2s)
     let clientIp = '확인 불가 / 비공개';
     try {
       const ipController = new AbortController();
-      const timeoutId = setTimeout(() => ipController.abort(), 1500);
+      const timeoutId = setTimeout(() => ipController.abort(), 1200);
       const ipRes = await fetch('https://api.ipify.org?format=json', { signal: ipController.signal });
       clearTimeout(timeoutId);
       if (ipRes.ok) {
@@ -289,9 +295,55 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
       clientIp = '확인 불가 / VPN';
     }
 
+    // IP 기준 봇 판별 시 추가 차단 (Meta/Google 등 데이터센터 IP)
+    if (isKnownBotIp(clientIp)) {
+      return true;
+    }
+
+    // 유입 채널 (Referrer) 스마트 분석
+    let channelName = '⚡ 직접 접속 / 북마크 / 주소창 입력';
+    if (/instagram\.com/i.test(rawReferrer)) {
+      channelName = '📸 인스타그램 (Instagram 프로필/링크)';
+    } else if (/threads\.net/i.test(rawReferrer)) {
+      channelName = '💬 스레드 (Threads 피드/프로필)';
+    } else if (/youtube\.com|youtu\.be/i.test(rawReferrer)) {
+      channelName = '🎬 유튜브 (YouTube 쇼츠/설명란)';
+    } else if (/myti/i.test(rawReferrer)) {
+      channelName = '🎯 MYTI 페르소나 테스트 ➔ 디든 연결 유입';
+    } else if (/google\./i.test(rawReferrer)) {
+      channelName = '🔍 Google 검색 유입';
+    } else if (/naver\./i.test(rawReferrer)) {
+      channelName = '🟢 네이버 검색 유입';
+    } else if (/kakao/i.test(rawReferrer)) {
+      channelName = '🟡 카카오톡 공유 링크 유입';
+    } else if (rawReferrer) {
+      channelName = `🌐 외부 웹사이트 (${rawReferrer.substring(0, 50)})`;
+    }
+
+    // 기기 & OS 스마트 파싱
+    let osName = '기타 OS';
+    if (/iPhone/i.test(userAgent)) osName = 'Apple iPhone (iOS)';
+    else if (/iPad/i.test(userAgent)) osName = 'Apple iPad (iPadOS)';
+    else if (/Android/i.test(userAgent)) osName = 'Android 모바일';
+    else if (/Macintosh|Mac OS/i.test(userAgent)) osName = 'Mac (macOS)';
+    else if (/Windows/i.test(userAgent)) osName = 'Windows PC';
+
+    // 브라우저 정밀 파싱 (크로미움 기반 브라우저 우선순위 체크)
+    let browserName = '기타 브라우저';
+    if (/kakao/i.test(userAgent)) browserName = '🟡 카카오톡 인앱';
+    else if (/instagram/i.test(userAgent)) browserName = '📸 인스타 인앱';
+    else if (/naver\(/i.test(userAgent)) browserName = '🟢 네이버 앱';
+    else if (/whale/i.test(userAgent)) browserName = '🐳 네이버 웨일 (Whale)';
+    else if (/samsungbrowser/i.test(userAgent)) browserName = '🌌 삼성 인터넷';
+    else if (/edg/i.test(userAgent)) browserName = '🟦 MS Edge';
+    else if (/firefox|fxios/i.test(userAgent)) browserName = '🦊 Firefox';
+    else if (/opr|opera/i.test(userAgent)) browserName = '🔴 Opera';
+    else if (/chrome|crios/i.test(userAgent)) browserName = '🔴 Chrome';
+    else if (/safari/i.test(userAgent) && !/chrome/i.test(userAgent)) browserName = '🧭 Safari';
+
     const isProUser = visitorType.includes('PRO');
-    const embedColor = isBot ? 0x95a5a6 : isProUser ? 0xf59e0b : 0x6366f1; // 봇은 차분한 그레이, PRO는 럭셔리 골드, 일반은 인디고
-    const statusEmoji = isBot ? '🤖' : isProUser ? '👑' : '✨';
+    const embedColor = isProUser ? 0xf59e0b : 0x6366f1; // PRO는 럭셔리 골드, 일반은 인디고
+    const statusEmoji = isProUser ? '👑' : '✨';
 
     return await sendDiscordEmbed({
       title: `${statusEmoji} [Dethan 디든] 실시간 방문 알림 대시보드`,
@@ -304,7 +356,8 @@ export const notifyVisitor = async (userInfo?: VisitorInfo): Promise<boolean> =>
         { name: '🌐 브라우저', value: browserName, inline: true },
         { name: '🕒 접속 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: true },
       ],
-      footerText: isBot ? 'Dethan (디든) 봇 트래픽 모니터링' : 'Dethan (디든) 실시간 유저 모니터링',
+      footerText: 'Dethan (디든) 실시간 유저 모니터링',
+      webhookUrl: getWebhookUrl(),
     });
   } catch (error) {
     console.error('[DiscordNotifier] 방문자 알림 실패:', error);
@@ -383,16 +436,24 @@ export const notifyCorrectionSuccess = async (
     color: isPro ? 0xf1c40f : 0x2ecc71, // Gold if Pro, Emerald Green if Free
     fields,
     footerText: 'Dethan (디든) AI 실시간 자소서 첨삭 모니터링',
+    webhookUrl: getWebhookUrl(),
   });
 };
 
 /**
  * 3. notifyPaymentSuccess(): 결제 성공 시 알림 (결제 금액 및 유저 식별 정보 포함)
+ * - 입금 전용 웹훅(VITE_DISCORD_DEPOSIT_WEBHOOK_URL)으로만 전송
  */
 export const notifyPaymentSuccess = async (
   amount: number,
   email?: string
 ): Promise<boolean> => {
+  const depositWebhookUrl = getDepositWebhookUrl();
+  if (!depositWebhookUrl) {
+    console.warn('[DiscordNotifier] ⚠️ DISCORD_DEPOSIT_WEBHOOK_URL이 설정되어 있지 않습니다.');
+    return false;
+  }
+
   return sendDiscordEmbed({
     title: '🎉 결제/입금 신청 완료 (PRO 업그레이드)!',
     color: 0xf1c40f, // Gold / Yellow
@@ -402,6 +463,6 @@ export const notifyPaymentSuccess = async (
       { name: '🕒 결제 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
     ],
     footerText: 'Dethan Pro 입금/결제 알림',
-    webhookUrl: getDepositWebhookUrl(),
+    webhookUrl: depositWebhookUrl,
   });
 };

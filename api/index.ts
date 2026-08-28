@@ -383,10 +383,12 @@ app.post('/api/notify-deposit', notifyLimiter, async (req, res) => {
     const { depositorName, amount, product, email } = req.body;
     const discordWebhookUrl =
       process.env.DISCORD_DEPOSIT_WEBHOOK_URL ||
-      process.env.DISCORD_WEBHOOK_URL;
+      process.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL ||
+      process.env.DISCORD_WEBHOOK_URL ||
+      process.env.VITE_DISCORD_WEBHOOK_URL;
 
     if (!discordWebhookUrl) {
-      console.warn('DISCORD_DEPOSIT_WEBHOOK_URL / DISCORD_WEBHOOK_URL is not configured.');
+      console.warn('DISCORD_DEPOSIT_WEBHOOK_URL is not configured.');
       return res.json({ success: true, message: 'Webhook URL not set' });
     }
 
