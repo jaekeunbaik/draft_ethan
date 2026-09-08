@@ -13,6 +13,7 @@ import { TermsModal } from './components/TermsModal';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { ContentGuideSection } from './components/ContentGuideSection';
 import { TestimonialsSection } from './components/TestimonialsSection';
+import { AdSenseBanner } from './components/AdSenseBanner';
 import { CorrectionRequest, CorrectionResponse, HistoryItem } from './types';
 import { AlertCircle, ArrowUp, Instagram, ShieldCheck } from 'lucide-react';
 import { supabase } from './lib/supabase';
@@ -733,11 +734,17 @@ export default function App() {
           />
         )}
 
+        {/* ── Google AdSense 결과 리포트 하단 광고 유닛 ── */}
+        <AdSenseBanner className="mt-8" />
+
         {/* 🏆 합격 후기 Social Proof 섹션 */}
         <TestimonialsSection />
 
         {/* 자소서 가이드 콘텐츠 — AdSense 정책 준수 및 SEO 강화 */}
         <ContentGuideSection />
+
+        {/* ── Google AdSense 하단 광고 유닛 ── */}
+        <AdSenseBanner className="mt-8" />
       </main>
 
       {/* Floating Scroll to Top button */}
