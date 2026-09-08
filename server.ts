@@ -352,6 +352,7 @@ ${content}
   // API Endpoint for Discord Deposit Request Notification
   app.post('/api/notify-deposit', async (req, res) => {
     try {
+      const { depositorName, amount, product, email } = req.body;
       const discordWebhookUrl =
         process.env.DISCORD_DEPOSIT_WEBHOOK_URL ||
         process.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL ||
@@ -393,6 +394,105 @@ ${content}
     } catch (error) {
       console.error('Discord notification failed:', error);
       return res.status(500).json({ error: 'Failed to send Discord notification' });
+    }
+  });
+
+  // API Endpoint for Admin Approve Deposit
+  app.post('/api/admin/approve-deposit', async (req, res) => {
+    try {
+      const { requestId, userId, days, depositorName, email } = req.body;
+
+      if (!requestId || !userId) {
+        return res.status(400).json({ error: '필수 요청 파라미터가 누락되었습니다.' });
+      }
+
+      const supabaseClient = getSupabaseClient();
+
+      // 1. Calculate expiration date with stacking
+      let baseTime = Date.now();
+      const { data: userProfile } = await supabaseClient
+        .from('profiles')
+        .select('pro_expires_at, is_pro')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (userProfile?.is_pro && userProfile?.pro_expires_at) {
+        const currentExp = new Date(userProfile.pro_expires_at).getTime();
+        if (currentExp > baseTime) {
+          baseTime = currentExp;
+        }
+      }
+
+      const addDays = Number(days) || 30;
+      const expiresAt = new Date(baseTime + addDays * 24 * 60 * 60 * 1000).toISOString();
+
+      // 2. Upsert profile with Service Role (bypasses RLS)
+      const profilePayload: any = {
+        id: userId,
+        email: email || `${userId}@kakao.user`,
+        is_pro: true,
+        pro_expires_at: expiresAt,
+      };
+      if (depositorName) {
+        profilePayload.depositor_name = depositorName;
+      }
+
+      const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .upsert(profilePayload);
+
+      if (profileError) {
+        console.error('[Admin Approve] Profile update failed:', profileError);
+        delete profilePayload.depositor_name;
+        const { error: fallbackError } = await supabaseClient
+          .from('profiles')
+          .upsert(profilePayload);
+        if (fallbackError) {
+          throw new Error(`프로필 업데이트 실패: ${fallbackError.message}`);
+        }
+      }
+
+      // 3. Update payment_request status to approved
+      const { error: reqError } = await supabaseClient
+        .from('payment_requests')
+        .update({ status: 'approved' })
+        .eq('id', requestId);
+
+      if (reqError) {
+        console.error('[Admin Approve] Request status update failed:', reqError);
+        throw new Error(`결제 요청 상태 갱신 실패: ${reqError.message}`);
+      }
+
+      console.log(`[Admin Approve] Successfully approved deposit for user ${userId} (${addDays} days added, expires: ${expiresAt})`);
+      return res.json({ success: true, expiresAt });
+    } catch (error: any) {
+      console.error('[Admin Approve] Error:', error);
+      return res.status(500).json({ error: error.message || '승인 처리 중 오류가 발생했습니다.' });
+    }
+  });
+
+  // API Endpoint for Admin Reject Deposit
+  app.post('/api/admin/reject-deposit', async (req, res) => {
+    try {
+      const { requestId } = req.body;
+      if (!requestId) {
+        return res.status(400).json({ error: '요청 ID가 누락되었습니다.' });
+      }
+
+      const supabaseClient = getSupabaseClient();
+      const { error } = await supabaseClient
+        .from('payment_requests')
+        .update({ status: 'rejected' })
+        .eq('id', requestId);
+
+      if (error) {
+        throw new Error(`거절 처리 실패: ${error.message}`);
+      }
+
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error('[Admin Reject] Error:', error);
+      return res.status(500).json({ error: error.message || '거절 처리 중 오류가 발생했습니다.' });
     }
   });
 

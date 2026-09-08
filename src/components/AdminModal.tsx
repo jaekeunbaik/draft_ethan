@@ -196,72 +196,101 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
         days = 30;
       }
 
-      // Check if user already has an active PRO subscription to accumulate (stack) remaining period
-      let baseTime = Date.now();
-      const { data: userProfile } = await supabase
-        .from('profiles')
-        .select('pro_expires_at, is_pro')
-        .eq('id', req.user_id)
-        .single();
+      // 1. First try server-side admin API (Service Role bypasses RLS safely)
+      let approvedExpiresAt: string | null = null;
+      let apiSuccess = false;
 
-      if (userProfile?.is_pro && userProfile?.pro_expires_at) {
-        const currentExp = new Date(userProfile.pro_expires_at).getTime();
-        if (currentExp > baseTime) {
-          baseTime = currentExp; // Stack onto existing expiration date!
+      try {
+        const response = await fetch('/api/admin/approve-deposit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestId: req.id,
+            userId: req.user_id,
+            days,
+            depositorName: req.depositor_name,
+            email: req.email,
+          }),
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.success) {
+            approvedExpiresAt = resData.expiresAt;
+            apiSuccess = true;
+          }
         }
+      } catch (apiErr) {
+        console.warn('Server API approve failed, attempting direct Supabase fallback:', apiErr);
       }
 
-      const expiresAt = new Date(baseTime + days * 24 * 60 * 60 * 1000).toISOString();
+      // 2. Fallback to direct client-side Supabase query if API is not available
+      if (!apiSuccess) {
+        let baseTime = Date.now();
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('pro_expires_at, is_pro')
+          .eq('id', req.user_id)
+          .maybeSingle();
 
-      // 1. Upgrade profile's is_pro status to true with pro_expires_at timestamp (upsert guarantees creation)
-      const profileData: any = {
-        id: req.user_id,
-        email: req.email || `${req.user_id}@kakao.user`,
-        is_pro: true,
-        pro_expires_at: expiresAt
-      };
-      if (req.depositor_name) {
-        profileData.depositor_name = req.depositor_name;
+        if (userProfile?.is_pro && userProfile?.pro_expires_at) {
+          const currentExp = new Date(userProfile.pro_expires_at).getTime();
+          if (currentExp > baseTime) {
+            baseTime = currentExp;
+          }
+        }
+
+        approvedExpiresAt = new Date(baseTime + days * 24 * 60 * 60 * 1000).toISOString();
+
+        const profileData: any = {
+          id: req.user_id,
+          email: req.email || `${req.user_id}@kakao.user`,
+          is_pro: true,
+          pro_expires_at: approvedExpiresAt,
+        };
+        if (req.depositor_name) {
+          profileData.depositor_name = req.depositor_name;
+        }
+
+        let { error: profileError } = await supabase
+          .from('profiles')
+          .upsert(profileData);
+
+        if (profileError && profileError.message?.includes('depositor_name')) {
+          delete profileData.depositor_name;
+          const fallback = await supabase.from('profiles').upsert(profileData);
+          profileError = fallback.error;
+        }
+
+        if (profileError) throw profileError;
+
+        const { error: reqError } = await supabase
+          .from('payment_requests')
+          .update({ status: 'approved' })
+          .eq('id', req.id);
+
+        if (reqError) throw reqError;
       }
 
-      let { error: profileError } = await supabase
-        .from('profiles')
-        .upsert(profileData);
-
-      if (profileError && profileError.message?.includes('depositor_name')) {
-        delete profileData.depositor_name;
-        const fallback = await supabase.from('profiles').upsert(profileData);
-        profileError = fallback.error;
-      }
-
-      if (profileError) throw profileError;
-
-      // 2. Set payment request status as approved
-      const { error: reqError } = await supabase
-        .from('payment_requests')
-        .update({ status: 'approved' })
-        .eq('id', req.id);
-
-      if (reqError) throw reqError;
-
-      const expiresDateStr = new Date(expiresAt).toLocaleDateString('ko-KR', {
+      const finalExpiresAt = approvedExpiresAt || new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+      const expiresDateStr = new Date(finalExpiresAt).toLocaleDateString('ko-KR', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
       });
 
       alert(`👑 [${req.depositor_name || '무명'}] 회원님의 이체 승인이 완료되었습니다.\nPRO 이용권(${days}일)이 누적 추가되었습니다!\n자동 만료 예정일: ${expiresDateStr}`);
-      
+
       // Update state locally
       setPaymentRequests((prev) =>
         prev.map((r) => (r.id === req.id ? { ...r, status: 'approved' } : r))
       );
       setProfiles((prev) =>
-        prev.map((p) => (p.id === req.user_id ? { ...p, is_pro: true, pro_expires_at: expiresAt } : p))
+        prev.map((p) => (p.id === req.user_id ? { ...p, is_pro: true, pro_expires_at: finalExpiresAt } : p))
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error('Approve failed:', err);
-      alert('승인 처리 실패: DB 권한 오류이거나 잘못된 요청입니다.');
+      alert(`승인 처리 실패: ${err.message || 'DB 권한 오류이거나 잘못된 요청입니다.'}`);
     } finally {
       setActionLoadingId(null);
     }
@@ -271,20 +300,37 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     if (!confirm('정말로 이 입금 요청 건을 거절/취소 처리하시겠습니까?')) return;
     setActionLoadingId(reqId);
     try {
-      const { error } = await supabase
-        .from('payment_requests')
-        .update({ status: 'rejected' })
-        .eq('id', reqId);
+      let apiSuccess = false;
+      try {
+        const response = await fetch('/api/admin/reject-deposit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requestId: reqId }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) apiSuccess = true;
+        }
+      } catch (apiErr) {
+        console.warn('Server API reject failed, falling back to direct query:', apiErr);
+      }
 
-      if (error) throw error;
+      if (!apiSuccess) {
+        const { error } = await supabase
+          .from('payment_requests')
+          .update({ status: 'rejected' })
+          .eq('id', reqId);
+
+        if (error) throw error;
+      }
 
       alert('해당 요청이 거절(반려) 처리되었습니다.');
       setPaymentRequests((prev) =>
         prev.map((r) => (r.id === reqId ? { ...r, status: 'rejected' } : r))
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error('Reject failed:', err);
-      alert('거절 처리 실패.');
+      alert(`거절 처리 실패: ${err.message || '네트워크 오류입니다.'}`);
     } finally {
       setActionLoadingId(null);
     }

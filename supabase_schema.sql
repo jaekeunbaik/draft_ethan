@@ -35,7 +35,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Drop existing policies if present to prevent 42710 duplicate policy errors
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can insert all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can update all profiles" ON public.profiles;
 
 -- RLS Policies for profiles
@@ -54,6 +56,10 @@ CREATE POLICY "Users can update their own profile"
 CREATE POLICY "Admins can view all profiles"
     ON public.profiles FOR SELECT
     USING (public.is_admin());
+
+CREATE POLICY "Admins can insert all profiles"
+    ON public.profiles FOR INSERT
+    WITH CHECK (public.is_admin());
 
 CREATE POLICY "Admins can update all profiles"
     ON public.profiles FOR UPDATE

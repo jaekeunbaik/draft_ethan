@@ -377,10 +377,110 @@ ${content}
   }
 });
 
+// ─── POST /api/admin/approve-deposit ──────────────────────────────────────────
+app.post('/api/admin/approve-deposit', async (req, res) => {
+  try {
+    const { requestId, userId, days, depositorName, email, adminUserId } = req.body;
+
+    if (!requestId || !userId) {
+      return res.status(400).json({ error: '필수 요청 파라미터가 누락되었습니다.' });
+    }
+
+    const supabaseClient = getSupabaseClient();
+
+    // 1. Calculate expiration date with stacking
+    let baseTime = Date.now();
+    const { data: userProfile } = await supabaseClient
+      .from('profiles')
+      .select('pro_expires_at, is_pro')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (userProfile?.is_pro && userProfile?.pro_expires_at) {
+      const currentExp = new Date(userProfile.pro_expires_at).getTime();
+      if (currentExp > baseTime) {
+        baseTime = currentExp;
+      }
+    }
+
+    const addDays = Number(days) || 30;
+    const expiresAt = new Date(baseTime + addDays * 24 * 60 * 60 * 1000).toISOString();
+
+    // 2. Upsert profile with Service Role (bypasses RLS)
+    const profilePayload: any = {
+      id: userId,
+      email: email || `${userId}@kakao.user`,
+      is_pro: true,
+      pro_expires_at: expiresAt,
+    };
+    if (depositorName) {
+      profilePayload.depositor_name = depositorName;
+    }
+
+    const { error: profileError } = await supabaseClient
+      .from('profiles')
+      .upsert(profilePayload);
+
+    if (profileError) {
+      console.error('[Admin Approve] Profile update failed:', profileError);
+      // Retry without depositor_name in case column does not exist
+      delete profilePayload.depositor_name;
+      const { error: fallbackError } = await supabaseClient
+        .from('profiles')
+        .upsert(profilePayload);
+      if (fallbackError) {
+        throw new Error(`프로필 업데이트 실패: ${fallbackError.message}`);
+      }
+    }
+
+    // 3. Update payment_request status to approved
+    const { error: reqError } = await supabaseClient
+      .from('payment_requests')
+      .update({ status: 'approved' })
+      .eq('id', requestId);
+
+    if (reqError) {
+      console.error('[Admin Approve] Request status update failed:', reqError);
+      throw new Error(`결제 요청 상태 갱신 실패: ${reqError.message}`);
+    }
+
+    console.log(`[Admin Approve] Successfully approved deposit for user ${userId} (${addDays} days added, expires: ${expiresAt})`);
+    return res.json({ success: true, expiresAt });
+  } catch (error: any) {
+    console.error('[Admin Approve] Error:', error);
+    return res.status(500).json({ error: error.message || '승인 처리 중 오류가 발생했습니다.' });
+  }
+});
+
+// ─── POST /api/admin/reject-deposit ───────────────────────────────────────────
+app.post('/api/admin/reject-deposit', async (req, res) => {
+  try {
+    const { requestId } = req.body;
+    if (!requestId) {
+      return res.status(400).json({ error: '요청 ID가 누락되었습니다.' });
+    }
+
+    const supabaseClient = getSupabaseClient();
+    const { error } = await supabaseClient
+      .from('payment_requests')
+      .update({ status: 'rejected' })
+      .eq('id', requestId);
+
+    if (error) {
+      throw new Error(`거절 처리 실패: ${error.message}`);
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[Admin Reject] Error:', error);
+    return res.status(500).json({ error: error.message || '거절 처리 중 오류가 발생했습니다.' });
+  }
+});
+
 // ─── POST /api/notify-deposit ─────────────────────────────────────────────────
 app.post('/api/notify-deposit', notifyLimiter, async (req, res) => {
   try {
-    const { depositorName, amount, product, email } = req.body;
+    const { depositorName, amount, product, email, isModalOpen } = req.body;
     const discordWebhookUrl =
       process.env.DISCORD_DEPOSIT_WEBHOOK_URL ||
       process.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL ||
@@ -388,25 +488,39 @@ app.post('/api/notify-deposit', notifyLimiter, async (req, res) => {
       process.env.VITE_DISCORD_WEBHOOK_URL;
 
     if (!discordWebhookUrl) {
-      console.warn('DISCORD_DEPOSIT_WEBHOOK_URL is not configured.');
+      console.warn('DISCORD_DEPOSIT_WEBHOOK_URL / DISCORD_WEBHOOK_URL is not configured.');
       return res.json({ success: true, message: 'Webhook URL not set' });
     }
+
+    const title = isModalOpen
+      ? '👀 [Dethan 디든] 결제/PRO 업그레이드 창 열람 감지!'
+      : '🔔 [Dethan 디든] 새로운 무통장 입금 확인 요청!';
+    const color = isModalOpen ? 0x3b82f6 : 0x5865f2;
+
+    const fields = isModalOpen
+      ? [
+          { name: '👤 유저 식별 정보', value: email || '비회원 / 손님', inline: true },
+          { name: '📦 관심 상품', value: product || 'Dethan Pro 패스', inline: true },
+          { name: '💰 상품 금액', value: amount ? `${Number(amount).toLocaleString()}원` : '미확인', inline: true },
+          { name: '🕒 열람 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
+        ]
+      : [
+          { name: '👤 입금자 성함', value: depositorName || '미입력', inline: true },
+          { name: '💰 입금 금액', value: `${Number(amount).toLocaleString()}원`, inline: true },
+          { name: '📦 신청 상품', value: product || '무제한 이용권', inline: false },
+          { name: '📧 신청자 이메일/ID', value: email || '미입력', inline: false },
+        ];
 
     await fetch(discordWebhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         embeds: [{
-          title: '🔔 [Dethan 디든] 새로운 무통장 입금 확인 요청!',
-          color: 0x5865f2,
-          fields: [
-            { name: '👤 입금자 성함', value: depositorName || '미입력', inline: true },
-            { name: '💰 입금 금액', value: `${Number(amount).toLocaleString()}원`, inline: true },
-            { name: '📦 신청 상품', value: product || '무제한 이용권', inline: false },
-            { name: '📧 신청자 이메일/ID', value: email || '미입력', inline: false },
-          ],
+          title,
+          color,
+          fields,
           timestamp: new Date().toISOString(),
-          footer: { text: 'Dethan Pro 입금 알림' },
+          footer: { text: 'Dethan Pro 실시간 모니터링' },
         }],
       }),
     });

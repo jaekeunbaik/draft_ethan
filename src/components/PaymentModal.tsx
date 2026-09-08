@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Copy, CheckCircle2, Instagram } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { notifyPaymentSuccess } from '../utils/discordNotifier';
+import { notifyPaymentSuccess, notifyPaymentModalOpen } from '../utils/discordNotifier';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -40,16 +40,23 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
     }
   };
 
-  // 1. Log payment modal open intent (reuse existing 'opened' intent if present)
+  // 1. Log payment modal open intent (reuse existing 'opened' request if present & notify Discord)
   useEffect(() => {
-    if (!isOpen || !user) {
-      // Clear local states on close
-      if (!isOpen) {
-        setDepositorName('');
-        setCurrentRequestId(null);
-      }
+    if (!isOpen) {
+      setDepositorName('');
+      setCurrentRequestId(null);
       return;
     }
+
+    // 디스코드 실시간 결제창 열람 알림 즉시 발송
+    const userIdentifier = user?.email || (user?.id ? `${user.id}@kakao.user` : '비회원 방문자');
+    notifyPaymentModalOpen(
+      userIdentifier,
+      getProductName(selectedProduct),
+      getAmount(selectedProduct)
+    ).catch((e) => console.warn('Modal open notify failed:', e));
+
+    if (!user) return;
 
     const logOpenIntent = async () => {
       try {
@@ -195,10 +202,27 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, use
         console.warn('Skipped profiles.depositor_name update:', pErr);
       }
 
-      // 3. Send real-time notification to Discord Webhook
+      // 3. Send real-time notification to Discord Webhook (Dual route: Server API + Client Fallback)
       try {
-        const userInfo = `${user?.email || `${user?.id || 'unknown'}@kakao.user`} (입금자명: ${depositorName.trim()})`;
-        await notifyPaymentSuccess(getAmount(selectedProduct), userInfo);
+        const payload = {
+          depositorName: depositorName.trim(),
+          amount: getAmount(selectedProduct),
+          product: getProductName(selectedProduct),
+          email: user?.email || `${user?.id || 'unknown'}@kakao.user`,
+        };
+
+        // 3-1. Server API 호출 (Vercel 환경변수 및 CORS/애드블록 완벽 우회)
+        fetch('/api/notify-deposit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).catch((apiErr) => {
+          console.warn('Server notify API error:', apiErr);
+        });
+
+        // 3-2. 클라이언트 직접 발송 폴백
+        const userInfo = `${payload.email} (입금자명: ${payload.depositorName})`;
+        await notifyPaymentSuccess(payload.amount, userInfo);
       } catch (notifyErr) {
         console.warn('Failed to send Discord notification:', notifyErr);
       }

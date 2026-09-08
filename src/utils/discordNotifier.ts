@@ -13,7 +13,13 @@ const getWebhookUrl = (): string | undefined => {
 const getDepositWebhookUrl = (): string | undefined => {
   return (
     import.meta.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL ||
-    (typeof process !== 'undefined' ? process.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL || process.env.DISCORD_DEPOSIT_WEBHOOK_URL : undefined)
+    import.meta.env.VITE_DISCORD_WEBHOOK_URL ||
+    (typeof process !== 'undefined'
+      ? process.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL ||
+        process.env.DISCORD_DEPOSIT_WEBHOOK_URL ||
+        process.env.VITE_DISCORD_WEBHOOK_URL ||
+        process.env.DISCORD_WEBHOOK_URL
+      : undefined)
   );
 };
 
@@ -463,6 +469,52 @@ export const notifyPaymentSuccess = async (
       { name: '🕒 결제 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
     ],
     footerText: 'Dethan Pro 입금/결제 알림',
+    webhookUrl: depositWebhookUrl,
+  });
+};
+
+/**
+ * 4. notifyPaymentModalOpen(): 결제/PRO 모달창 열람 시 알림 (구매 고려/이탈 감지용)
+ */
+let lastModalOpenNotifyTime = 0;
+export const notifyPaymentModalOpen = async (
+  email?: string,
+  selectedProduct?: string,
+  amount?: number
+): Promise<boolean> => {
+  const now = Date.now();
+  // 3분 이내 동일 탭/기기 중복 알림 방지
+  if (now - lastModalOpenNotifyTime < 3 * 60 * 1000) {
+    return false;
+  }
+  lastModalOpenNotifyTime = now;
+
+  const depositWebhookUrl = getDepositWebhookUrl();
+  if (!depositWebhookUrl) {
+    return false;
+  }
+
+  const fields = [
+    { name: '👤 유저 식별 정보', value: email || '비회원 / 손님', inline: true },
+    { name: '📦 관심 상품', value: selectedProduct || 'Dethan Pro 30일 무제한 올패스', inline: true },
+  ];
+
+  if (amount) {
+    fields.push({ name: '💰 상품 금액', value: `${amount.toLocaleString()}원`, inline: true });
+  }
+
+  fields.push({
+    name: '🕒 열람 시각',
+    value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+    inline: false,
+  });
+
+  return sendDiscordEmbed({
+    title: '👀 [Dethan 디든] 결제/PRO 업그레이드 창 열람 감지!',
+    description: '회원이 결제(무통장/토스) 모달창을 열고 구매를 검토 중입니다.',
+    color: 0x3b82f6, // Blue
+    fields,
+    footerText: 'Dethan Pro 구매 의도 모니터링',
     webhookUrl: depositWebhookUrl,
   });
 };
