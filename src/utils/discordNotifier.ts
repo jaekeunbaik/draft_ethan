@@ -461,12 +461,13 @@ export const notifyPaymentSuccess = async (
   }
 
   return sendDiscordEmbed({
-    title: '🎉 결제/입금 신청 완료 (PRO 업그레이드)!',
-    color: 0xf1c40f, // Gold / Yellow
+    title: '💰 [Dethan 디든] 실시간 무통장 입금 알림 도착!',
+    description: '고객이 계좌 송금 후 [입금 완료] 버튼을 눌렀습니다. 계좌 확인 후 어드민 제어판에서 승인해 주세요!',
+    color: 0x10b981, // Emerald Green
     fields: [
-      { name: '💰 결제/입금 금액', value: `${amount.toLocaleString()}원`, inline: true },
-      { name: '👤 유저 식별 정보', value: email || '익명/미확인 유저', inline: true },
-      { name: '🕒 결제 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
+      { name: '💰 입금 요청 금액', value: `**${amount.toLocaleString()}원**`, inline: true },
+      { name: '👤 신청 유저 식별 정보', value: email || '익명/미확인 유저', inline: true },
+      { name: '🕒 입금 완료 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
     ],
     footerText: 'Dethan Pro 입금/결제 알림',
     webhookUrl: depositWebhookUrl,

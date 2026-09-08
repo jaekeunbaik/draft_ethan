@@ -352,7 +352,7 @@ ${content}
   // API Endpoint for Discord Deposit Request Notification
   app.post('/api/notify-deposit', async (req, res) => {
     try {
-      const { depositorName, amount, product, email } = req.body;
+      const { depositorName, amount, product, email, isModalOpen } = req.body;
       const discordWebhookUrl =
         process.env.DISCORD_DEPOSIT_WEBHOOK_URL ||
         process.env.VITE_DISCORD_DEPOSIT_WEBHOOK_URL ||
@@ -364,20 +364,40 @@ ${content}
         return res.json({ success: true, message: 'Webhook URL not configured' });
       }
 
+      const title = isModalOpen
+        ? '👀 [Dethan 디든] 결제/PRO 업그레이드 창 열람 감지!'
+        : '💰 [Dethan 디든] 실시간 무통장 입금 알림 도착!';
+      const color = isModalOpen ? 0x3b82f6 : 0x10b981;
+
+      const description = isModalOpen
+        ? '회원이 결제(무통장/토스) 모달창을 열고 구매를 검토 중입니다.'
+        : '고객이 카카오뱅크로 송금 후 [입금 완료] 버튼을 눌렀습니다. 계좌 확인 후 어드민 제어판에서 승인해 주세요!';
+
+      const fields = isModalOpen
+        ? [
+            { name: '👤 유저 식별 정보', value: email || '비회원 / 손님', inline: true },
+            { name: '📦 관심 상품', value: product || 'Dethan Pro 패스', inline: true },
+            { name: '💰 상품 금액', value: amount ? `${Number(amount).toLocaleString()}원` : '미확인', inline: true },
+            { name: '🕒 열람 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false },
+          ]
+        : [
+            { name: '👤 입금자 성함 (실명)', value: `**${depositorName || '미입력'}**`, inline: true },
+            { name: '💰 입금 요청 금액', value: `**${Number(amount).toLocaleString()}원**`, inline: true },
+            { name: '📦 신청 상품명', value: product || '무제한 이용권', inline: false },
+            { name: '📧 신청자 계정/ID', value: email || '미입력', inline: true },
+            { name: '🕒 입금 완료 시각', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: true },
+          ];
+
       const payload = {
         embeds: [
           {
-            title: '🔔 [Dethan 디든] 새로운 무통장 입금 확인 요청!',
-            color: 0x5865f2,
-            fields: [
-              { name: '👤 입금자 성함', value: depositorName || '미입력', inline: true },
-              { name: '💰 입금 금액', value: `${Number(amount).toLocaleString()}원`, inline: true },
-              { name: '📦 신청 상품', value: product || '무제한 이용권', inline: false },
-              { name: '📧 신청자 이메일/ID', value: email || '미입력', inline: false },
-            ],
+            title,
+            description,
+            color,
+            fields,
             timestamp: new Date().toISOString(),
             footer: {
-              text: 'Dethan Pro 입금 알림',
+              text: 'Dethan Pro 실시간 입금 모니터링',
             },
           },
         ],
@@ -389,7 +409,7 @@ ${content}
         body: JSON.stringify(payload),
       });
 
-      console.log(`[Discord Notify] Deposit request from ${depositorName} (${amount}원) sent!`);
+      console.log(`[Discord Notify] Notification (${title}) sent!`);
       return res.json({ success: true });
     } catch (error) {
       console.error('Discord notification failed:', error);
