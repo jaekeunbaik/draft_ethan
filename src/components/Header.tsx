@@ -4,6 +4,8 @@ import { History, HelpCircle, LogIn, LogOut, User, Shield } from 'lucide-react';
 interface HeaderProps {
   onOpenHistory: () => void;
   onOpenHelp: () => void;
+  onOpenGuides?: () => void;
+  onOpenAbout?: () => void;
   historyCount: number;
   user: any | null;
   isPro?: boolean;
@@ -19,6 +21,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   onOpenHistory,
   onOpenHelp,
+  onOpenGuides,
+  onOpenAbout,
   historyCount,
   user,
   isPro = false,
@@ -64,18 +68,30 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="w-full border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
-        {/* 로고 영역 */}
-        <div 
-          onClick={handleLogoClick}
-          className="flex items-center space-x-2 cursor-pointer select-none active:scale-98 transition-transform shrink-0 whitespace-nowrap"
-          title="5번 연속 클릭 시 관리자 모드가 표시됩니다"
-        >
-          <span className="font-extrabold tracking-tight text-xl text-gray-900">
-            D<span className="text-indigo-600">ethan</span>
-          </span>
-          <span className="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-full border border-indigo-100 whitespace-nowrap shrink-0">
-            디든 AI Studio
-          </span>
+        {/* 로고 및 내비게이션 영역 */}
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0 whitespace-nowrap">
+          <div 
+            onClick={handleLogoClick}
+            className="flex items-center space-x-2 cursor-pointer select-none active:scale-98 transition-transform shrink-0 whitespace-nowrap"
+            title="5번 연속 클릭 시 관리자 모드가 표시됩니다"
+          >
+            <span className="font-extrabold tracking-tight text-xl text-gray-900">
+              D<span className="text-indigo-600">ethan</span>
+            </span>
+            <span className="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-full border border-indigo-100 whitespace-nowrap shrink-0">
+              디든 AI
+            </span>
+          </div>
+
+          {/* 주요 가이드 & 소개 메뉴 */}
+          {onOpenGuides && (
+            <button
+              onClick={onOpenGuides}
+              className="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 border border-indigo-100 px-2.5 py-1 rounded-lg transition cursor-pointer"
+            >
+              📚 합격 백과
+            </button>
+          )}
         </div>
 
         {/* 상단 액션/상태 */}
@@ -90,23 +106,13 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          <a
-            href="https://de-cringe.vercel.app"
-            target="_blank"
-            rel="noreferrer"
-            className="hidden md:inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1 rounded-lg transition whitespace-nowrap shrink-0"
-            title="SNS 글 이불킥 검수 및 교정 AI 서비스 DeCringe 바로가기"
-          >
-            🔥 DeCringe AI
-          </a>
-
           {onOpenCoffee && (
             <button
               onClick={onOpenCoffee}
               className="hidden sm:inline-flex items-center gap-1 text-[11px] font-extrabold text-amber-900 bg-amber-100/90 hover:bg-amber-200 border border-amber-300 px-2.5 py-1 rounded-lg transition shadow-xs cursor-pointer animate-pulse whitespace-nowrap shrink-0"
               title="서류/면접 합격하면 커피 한 잔 쏘기!"
             >
-              ☕ 합격 턱 쏘기
+              ☕ 합격 턱
             </button>
           )}
           

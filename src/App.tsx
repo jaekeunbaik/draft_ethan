@@ -14,8 +14,11 @@ import { LoadingOverlay } from './components/LoadingOverlay';
 import { ContentGuideSection } from './components/ContentGuideSection';
 import { TestimonialsSection } from './components/TestimonialsSection';
 import { AdSenseBanner } from './components/AdSenseBanner';
+import { GuideHubModal } from './components/GuideHubModal';
+import { StandaloneModal } from './components/StandalonePages';
+import { GUIDE_ARTICLES } from './data/guidesData';
 import { CorrectionRequest, CorrectionResponse, HistoryItem } from './types';
-import { AlertCircle, ArrowUp, Instagram, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowUp, Instagram, ShieldCheck, BookOpen, Info, FileText, Mail, ChevronRight } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { notifyVisitor, notifyCorrectionSuccess, notifyPaymentSuccess } from './utils/discordNotifier';
 
@@ -50,6 +53,36 @@ export default function App() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isGuideHubOpen, setIsGuideHubOpen] = useState(false);
+  const [guideInitialSlug, setGuideInitialSlug] = useState<string | null>(null);
+  const [standalonePage, setStandalonePage] = useState<'about' | 'privacy' | 'terms' | 'contact' | null>(null);
+
+  // URL Route Detection for Guides and Standalone Pages (/guide/:slug, /about, etc.)
+  useEffect(() => {
+    const handleUrlRoute = () => {
+      const path = window.location.pathname.toLowerCase();
+      if (path.startsWith('/guide/')) {
+        const slug = path.replace('/guide/', '').replace(/\/$/, '');
+        setGuideInitialSlug(slug);
+        setIsGuideHubOpen(true);
+      } else if (path === '/guides' || path === '/guide') {
+        setGuideInitialSlug(null);
+        setIsGuideHubOpen(true);
+      } else if (path === '/about') {
+        setStandalonePage('about');
+      } else if (path === '/privacy') {
+        setStandalonePage('privacy');
+      } else if (path === '/terms') {
+        setStandalonePage('terms');
+      } else if (path === '/contact') {
+        setStandalonePage('contact');
+      }
+    };
+
+    handleUrlRoute();
+    window.addEventListener('popstate', handleUrlRoute);
+    return () => window.removeEventListener('popstate', handleUrlRoute);
+  }, []);
 
   // Auth state
   const [user, setUser] = useState<any | null>(null);
@@ -659,52 +692,15 @@ export default function App() {
           </div>
         )}
 
-        {/* Form Section */}
-        {/* High Conversion Kakao Login Banner for Guests */}
-        {!user && (
-          <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 border-2 border-yellow-300 text-[#191919] rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transform hover:scale-[1.01] transition duration-300">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/10 text-xs font-black uppercase tracking-wider">
-                <span>🔥 3초 무료 팩폭 검수 이벤트</span>
-              </div>
-              <h3 className="font-extrabold text-base sm:text-lg tracking-tight text-gray-900">
-                회원가입 절차 0초! 카카오 1초 로그인하고 AI 팩폭 첨삭 받기
-              </h3>
-              <p className="text-xs text-gray-800 font-medium">
-                로그인하시면 작성하신 자기소개서와 AI 첨삭 결과가 내 계정에 평생 안전하게 보관됩니다.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                supabase.auth.signInWithOAuth({
-                  provider: 'kakao',
-                  options: {
-                    redirectTo: window.location.origin,
-                    queryParams: {
-                      scope: 'profile_nickname,profile_image',
-                    },
-                  }
-                });
-              }}
-              className="px-6 py-3.5 bg-[#191919] hover:bg-black text-[#FEE500] text-sm font-extrabold rounded-xl shrink-0 cursor-pointer transition shadow-lg flex items-center justify-center space-x-2 active:scale-95 border border-yellow-400"
-            >
-              <svg className="w-5 h-5 fill-[#FEE500] shrink-0" viewBox="0 0 24 24">
-                <path d="M12 3c-5.52 0-10 3.58-10 8 0 2.92 1.92 5.48 4.8 6.92-.12.44-.8 2.88-.84 3.08-.04.2.08.28.24.16.12-.08 2.04-1.4 2.88-1.96.96.24 2 .36 2.92.36 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
-              </svg>
-              <span>💛 1초 카카오 로그인</span>
-            </button>
-          </div>
-        )}
-
+        {/* Cover Letter Input Form */}
         <FormSection
           onSubmit={handleSubmit}
           isLoading={isLoading}
-          initialRequest={request}
           isPro={isPro}
-          remainingFreeUsage={Math.max(0, 3 - getFreeUsageToday())}
-          onOpenUpgrade={() => {
+          user={user}
+          onOpenPayment={() => {
             if (!user) {
-              alert('PRO 요금제 기능을 잠금해제하려면 먼저 로그인이 필요합니다.');
+              alert('PRO 요금제를 활성화하려면 먼저 로그인이 필요합니다.');
               setIsAuthOpen(true);
             } else {
               setIsPaymentOpen(true);
@@ -712,30 +708,15 @@ export default function App() {
           }}
         />
 
-        {/* Result Section */}
-        {result && request && !isLoading && (
+        {/* Proofreading Result Display */}
+        {result && (
           <ResultSection
             result={result}
             request={request}
             isPro={isPro}
             user={user}
-            onOpenPayment={() => {
-              if (!user) {
-                alert('PRO 요금제를 활성화하려면 먼저 로그인이 필요합니다.');
-                setIsAuthOpen(true);
-              } else {
-                setIsPaymentOpen(true);
-              }
-            }}
-            onOpenAuth={() => setIsAuthOpen(true)}
-            onReEdit={() => {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
           />
         )}
-
-        {/* ── Google AdSense 결과 리포트 하단 광고 유닛 ── */}
-        <AdSenseBanner className="mt-8" />
 
         {/* 🏆 합격 후기 Social Proof 섹션 */}
         <TestimonialsSection />
@@ -756,47 +737,112 @@ export default function App() {
         <ArrowUp className="w-5 h-5" />
       </button>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 bg-white py-8 text-center text-xs text-gray-500 mt-12">
-        <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-3 text-left">
-            <span className="font-semibold text-gray-800">Dethan (디든)</span>
-            <span className="text-gray-300">•</span>
-            <button
-              onClick={() => setIsTermsOpen(true)}
-              className="text-gray-500 hover:text-indigo-600 font-medium underline cursor-pointer flex items-center gap-1"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              이용약관 및 개인정보 처리방침
-            </button>
+      {/* Enhanced Footer with Knowledge Hub Directory & Legal Policies */}
+      <footer className="border-t border-gray-100 bg-white py-12 text-xs text-gray-500 mt-12">
+        <div className="max-w-5xl mx-auto px-6 space-y-8">
+          
+          {/* 가이드 백과사전 디렉토리 링크 목록 */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-extrabold text-gray-900 flex items-center gap-1.5">
+              <BookOpen className="w-4 h-4 text-indigo-600" />
+              <span>Dethan 합격 자소서 백과사전 (직무별 바이블 & 가이드)</span>
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 text-[11px]">
+              {GUIDE_ARTICLES.map((art) => (
+                <button
+                  key={art.slug}
+                  onClick={() => {
+                    setGuideInitialSlug(art.slug);
+                    setIsGuideHubOpen(true);
+                  }}
+                  className="text-left text-gray-600 hover:text-indigo-600 hover:underline truncate cursor-pointer transition py-0.5"
+                  title={art.title}
+                >
+                  • {art.title}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <a
-              href="https://de-cringe.vercel.app"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-xs shadow-2xs transition cursor-pointer"
-            >
-              <span>🔥 DeCringe AI (SNS 흑역사 검수)</span>
-            </a>
+          <div className="pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3 text-left">
+              <span className="font-extrabold text-gray-900">Dethan (디든)</span>
+              <span className="text-gray-300">•</span>
+              <button
+                onClick={() => setStandalonePage('about')}
+                className="text-gray-600 hover:text-indigo-600 font-medium cursor-pointer"
+              >
+                서비스 소개
+              </button>
+              <span className="text-gray-300">•</span>
+              <button
+                onClick={() => setStandalonePage('privacy')}
+                className="text-gray-600 hover:text-indigo-600 font-medium cursor-pointer"
+              >
+                개인정보처리방침
+              </button>
+              <span className="text-gray-300">•</span>
+              <button
+                onClick={() => setStandalonePage('terms')}
+                className="text-gray-600 hover:text-indigo-600 font-medium cursor-pointer"
+              >
+                서비스 이용약관
+              </button>
+              <span className="text-gray-300">•</span>
+              <button
+                onClick={() => setStandalonePage('contact')}
+                className="text-gray-600 hover:text-indigo-600 font-medium cursor-pointer"
+              >
+                고객 지원 / 문의
+              </button>
+            </div>
 
-            <a
-              href="https://www.instagram.com/draft_ethan?igsh=MXJubXc5cjJ5ZTA1Zw=="
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 text-white font-semibold text-xs shadow-sm hover:opacity-90 transition cursor-pointer"
-            >
-              <Instagram className="w-3.5 h-3.5" />
-              <span>인스타그램 CS / 입금 문의</span>
-            </a>
+            <div className="flex items-center space-x-3">
+              <a
+                href="https://de-cringe.vercel.app"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-xs shadow-2xs transition cursor-pointer"
+              >
+                <span>🔥 DeCringe AI</span>
+              </a>
+
+              <a
+                href="https://www.instagram.com/draft_ethan?igsh=MXJubXc5cjJ5ZTA1Zw=="
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 text-white font-semibold text-xs shadow-sm hover:opacity-90 transition cursor-pointer"
+              >
+                <Instagram className="w-3.5 h-3.5" />
+                <span>공식 인스타그램</span>
+              </a>
+            </div>
           </div>
-        </div>
 
-        <div className="max-w-5xl mx-auto px-6 mt-4 text-[11px] text-gray-400 text-center sm:text-left leading-relaxed">
-          제출하신 자기소개서는 오직 AI 분석 및 첨삭 목적으로만 일시 처리되며 서버에 별도로 저장되지 않습니다. | AI 결과물은 서류 작성 참고용이며 채용 결과를 보장하지 않습니다.
+          <div className="text-[11px] text-gray-400 text-center sm:text-left leading-relaxed">
+            © 2026 Dethan (디든) — AI 자소서 아키텍트 플랫폼. All rights reserved. | 제출하신 자기소개서는 오직 AI 분석 및 첨삭 목적으로만 일시 처리되며 서버에 별도로 저장되지 않습니다. | AI 결과물은 서류 작성 참고용이며 최종 채용 결과를 보장하지 않습니다.
+          </div>
         </div>
       </footer>
+
+      {/* Knowledge Hub Modal */}
+      <GuideHubModal
+        isOpen={isGuideHubOpen}
+        onClose={() => {
+          setIsGuideHubOpen(false);
+          setGuideInitialSlug(null);
+        }}
+        initialSlug={guideInitialSlug}
+      />
+
+      {/* Standalone Legal & About Pages Modal */}
+      {standalonePage && (
+        <StandaloneModal
+          isOpen={!!standalonePage}
+          onClose={() => setStandalonePage(null)}
+          pageType={standalonePage}
+        />
+      )}
 
       {/* History Modal */}
       <HistoryModal
